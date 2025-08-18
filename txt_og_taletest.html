@@ -1,0 +1,105 @@
+<!-- ... eksisterende kode ... -->
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenAI Test</title>
+</head>
+<body>
+   <h1>Chat med Mogens</h1>
+  <h3>
+    Mogens er 77 og har haft diabetes i 20 år.<br>
+    Han har med en langtidsblodsukkermåling konstateret for højt blodsukkerniveau.<br>
+    Din opgave er at tage en faglig snak med Mogens om opstart på insulinbehandling.
+  </h3>
+  <input type="text" id="prompt" placeholder="Skriv besked..." />
+  <button onclick="sendMessage()">Send</button>
+  
+  <pre id="response"></pre>
+<audio id="audioPlayer" controls style="display:none;"></audio>
+<script>
+  let dialog = [];
+
+async function sendMessage() {
+  const promptInput = document.getElementById('prompt');
+  const userMessage = promptInput.value.trim();
+  if (!userMessage) return;
+
+  // Tilføj brugerens besked til dialogen
+  dialog.push({ sender: "Dig", text: userMessage });
+
+  //document.getElementById('response').innerText = "Vent...";
+
+  // Send besked til OpenAI (eksempel)
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer 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'
+    },
+    body: JSON.stringify({
+      model: 'gpt-4',
+      messages: [
+        { role: 'system', content: 'Du er Mogens Mortensen, en 77-årig mand med type 2‑diabetes. Du er fraskilt, dine børn besøger dig sjældent, og du er ofte i dårligt humør. Du elsker kage og cerutter, og du orker ikke at høre om nye behandlingstilbud. Du er blevet indkaldt til konsultation, og det irriterer dig meget. Svar som Mogens ville: gammel, gnaven, træt af systemet og ikke særlig samarbejdsvillig. Svarene skal være korte, som om du taler langsomt og tænker dig om. Brug pauser (fx “...”, “øh...”) og korte sætninger.\n\nDu skal guides igennem en struktureret samtale, der gradvist skal få dig til at gå fra modstand til villighed til at bidrage ved at love at måle blodsukker morgen og aften. Samtalen bør gennemløbe disse trin:\n\n1. Anerkend Mogens’ modstand og følelser (fx træthed, irritation).\n2. Stil åbne, empatiske spørgsmål for at forstå hans hverdag og bekymringer.\n3. Fremhæv små fordele ved at måle blodsukker (fx øget klarhed, forståelse af mønstre) med et “hvad får jeg ud af det?”-perspektiv.\n4. Invitér til en konkret forpligtelse: spørg Mogens, om han vil måle blodsukker morgen og aften.\n5. Hvis Mogens går med til det, bekræft positivt og anerkend det.\n6. Hvis Mogens fortsat modstår, valider hans følelser og foreslå et mindre skridt (fx måle i blot 3 dage).\n\nEn samtale opfattes som succesfuld, når Mogens aktivt forpligter sig til at måle blodsukker både morgen og aften i minimum en kort periode.\n\nDu må ikke udgive dig for at være læge eller give medicinsk rådgivning. Undgå diagnostiske udtryk. Formålet er refleksion og små handlinger, ikke behandling.' },
+        ...dialog.map(msg => ({
+          role: msg.sender === "Dig" ? "user" : "assistant",
+          content: msg.text
+        }))
+      ]
+    })
+  });
+  const data = await res.json();
+  const mogensReply = data.choices?.[0]?.message?.content || "Ingen svar fra Mogens.";
+
+  // Tilføj Mogens' svar til dialogen
+  dialog.push({ sender: "Mogens", text: mogensReply });
+
+  // Vis hele dialogen
+ document.getElementById('response').innerText = dialog
+  .slice().reverse()
+  .map(msg => `${msg.sender}: ${msg.text}`)
+  .join('\n\n');
+
+  // Tøm inputfeltet
+  promptInput.value = "";
+
+  // Afspil svaret med ElevenLabs
+  speakWithElevenLabs(mogensReply);
+}
+
+  document.getElementById('prompt').addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      sendMessage();
+    }
+  });
+
+  async function speakWithElevenLabs(text) {
+    const apiKey = "sk_6b8f79f4056daffb6996299a647b6ee01c16a70c716cf628"; // <-- Sæt din ElevenLabs API-nøgle her
+ const voiceId = "oR7UI6bWI8DTn0Oe1kc3"; // Ida (dansk)
+const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+const res = await fetch(url, {
+  method: 'POST',
+  headers: {
+    'Accept': 'audio/mpeg',
+    'Content-Type': 'application/json',
+    'xi-api-key': apiKey
+  },
+  body: JSON.stringify({
+    text: text,
+    model_id: "eleven_multilingual_v2", // Bedre model
+    voice_settings: { stability: 0.5, similarity_boost: 0.5 }
+  })
+});
+    if (res.ok) {
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audioPlayer = document.getElementById('audioPlayer');
+      audioPlayer.src = audioUrl;
+      audioPlayer.style.display = "block";
+      audioPlayer.play();
+    } else {
+      document.getElementById('response').innerText += "\n(Kunne ikke hente lyd fra ElevenLabs)";
+    }
+  }
+</script>
+<!-- ... eksisterende kode ... -->

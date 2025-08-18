@@ -1,0 +1,97 @@
+<!-- ... eksisterende kode ... -->
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenAI Test</title>
+</head>
+<body>
+   <h1>Chat med Mogens</h1>
+  <h3>
+    Mogens er 77 og har haft diabetes i 20 år.<br>
+    Han har med en langtidsblodsukkermåling konstateret for højt blodsukkerniveau.<br>
+    Din opgave er at tage en faglig snak med Mogens om opstart på insulinbehandling.
+  </h3>
+  <input type="text" id="prompt" placeholder="Skriv besked..." />
+  <button onclick="sendMessage()">Send</button>
+  
+  <pre id="response"></pre>
+<audio id="audioPlayer" controls style="display:none;"></audio>
+<script>
+  let dialog = [];
+
+async function sendMessage() {
+  const promptInput = document.getElementById('prompt');
+  const userMessage = promptInput.value.trim();
+  if (!userMessage) return;
+
+  // Tilføj brugerens besked til dialogen
+  dialog.push({ sender: "Dig", text: userMessage });
+
+  //document.getElementById('response').innerText = "Vent...";
+
+  // Send besked til OpenAI (eksempel)
+ const res = await fetch('http://localhost:3000/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: userMessage })
+  });
+
+
+ const data = await res.json();
+const mogensReply = data.reply || "Ingen svar fra Mogens.";
+
+  // Tilføj Mogens' svar til dialogen
+  dialog.push({ sender: "Mogens", text: mogensReply });
+
+  // Vis hele dialogen
+ document.getElementById('response').innerText = dialog
+  .slice().reverse()
+  .map(msg => `${msg.sender}: ${msg.text}`)
+  .join('\n\n');
+
+  // Tøm inputfeltet
+  promptInput.value = "";
+
+  // Afspil svaret med ElevenLabs
+  speakWithElevenLabs(mogensReply);
+}
+
+  document.getElementById('prompt').addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      sendMessage();
+    }
+  });
+
+  async function speakWithElevenLabs(text) {
+    
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+    //const apiKey = "sk_6b8f79f4056daffb6996299a647b6ee01c16a70c716cf628"; // <-- Sæt din ElevenLabs API-nøgle her
+ const voiceId = "oR7UI6bWI8DTn0Oe1kc3"; // Ida (dansk)
+const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+const res = await fetch(url, {
+  method: 'POST',
+  headers: {
+    'Accept': 'audio/mpeg',
+    'Content-Type': 'application/json',
+    'xi-api-key': apiKey
+  },
+  body: JSON.stringify({
+    text: text,
+    model_id: "eleven_multilingual_v2", // Bedre model
+    voice_settings: { stability: 0.5, similarity_boost: 0.5 }
+  })
+});
+    if (res.ok) {
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audioPlayer = document.getElementById('audioPlayer');
+      audioPlayer.src = audioUrl;
+      audioPlayer.style.display = "block";
+      audioPlayer.play();
+    } else {
+      document.getElementById('response').innerText += "\n(Kunne ikke hente lyd fra ElevenLabs)";
+    }
+  }
+</script>
+<!-- ... eksisterende kode ... -->

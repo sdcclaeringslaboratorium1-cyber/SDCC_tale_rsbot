@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenAI Test</title>
+</head>
+<body>
+  <input type="text" id="prompt" placeholder="Skriv besked..." />
+  <button onclick="sendMessage()">Send</button>
+  <pre id="response"></pre>
+  <audio id="audioPlayer" controls style="display:none;"></audio>
+  <script>
+    async function sendMessage() {
+      const prompt = document.getElementById('prompt').value;
+      document.getElementById('response').innerText = "Vent...";
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer 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' // <-- Sæt din OpenAI-nøgle her
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await res.json();
+      document.getElementById('response').innerText = data.choices?.[0]?.message?.content || JSON.stringify(data);
+    
+       const reply = data.choices?.[0]?.message?.content || JSON.stringify(data);
+    document.getElementById('response').innerText = reply;
+    // Send svaret til ElevenLabs
+    speakWithElevenLabs(reply);
+  }
+
+  async function speakWithElevenLabs(text) {
+    const apiKey = "DIN_ELEVENLABS_API_NØGLE"; // <-- Sæt din ElevenLabs API-nøgle her
+    const voiceId = "EXAVITQu4vr4xnSDxMaL"; // Standard ElevenLabs stemme, kan ændres
+    const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': apiKey
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: "eleven_monolingual_v1",
+        voice_settings: { stability: 0.5, similarity_boost: 0.5 }
+      })
+    });
+    if (res.ok) {
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audioPlayer = document.getElementById('audioPlayer');
+      audioPlayer.src = audioUrl;
+      audioPlayer.style.display = "block";
+      audioPlayer.play();
+    } else {
+      document.getElementById('response').innerText += "\n(Kunne ikke hente lyd fra ElevenLabs)";
+    }
+  }
+    
+    // Aktiver sendMessage når Enter trykkes i inputfeltet
+    document.getElementById('prompt').addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>

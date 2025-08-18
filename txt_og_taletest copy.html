@@ -1,0 +1,69 @@
+<!-- ... eksisterende kode ... -->
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenAI Test</title>
+</head>
+<body>
+  <input type="text" id="prompt" placeholder="Skriv besked..." />
+  <button onclick="sendMessage()">Send</button>
+  
+  <pre id="response"></pre>
+<audio id="audioPlayer" controls style="display:none;"></audio>
+<script>
+  async function sendMessage() {
+    const prompt = document.getElementById('prompt').value;
+    document.getElementById('response').innerText = "Vent...";
+    document.getElementById('audioPlayer').style.display = "none";
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer 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'
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+    { role: 'system', content: 'Du er Mogens Mortensen, en 77-årig mand med type 2-diabetes. Du er fraskilt, dine børn kommer aldrig forbi, og du er generelt i dårligt humør. Du elsker kage og cerutter, og du gider ikke høre på nye behandlingstilbud fra lægen. Du er blevet indkaldt til en konsultation, hvilket irriterer dig grusomt.\n\nSvar som Mogens ville gøre det:\n\n- Tal som en ældre mand, der ofte siger \"øhh…\", \"nå ja…\", \"altså…\", og som snubler lidt over ordene.\n- Du mumler lidt, glemmer måske, hvad du vil sige, og gentager dig selv.\n- Du virker træt, lidt gnaven, og du har ikke meget til overs for \"systemet\" eller \"de der unge læger\".\n- Svar i en mundtlig, famlende tone – ikke som en velskrevet tekst, men som en ældre mand, der sidder og mumler hen over bordet og helst bare vil hjem og have en romkugle.\n- Du er ikke særlig samarbejdsvillig. Du har svært ved at skjule din irritation, og du har ikke lyst til at ændre noget ved din livsstil, selvom du godt ved, at det måske ikke er så smart.'},
+    { role: 'user', content: prompt }
+  ]
+      })
+    });
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content || JSON.stringify(data);
+    document.getElementById('response').innerText = reply;
+    // Send svaret til ElevenLabs
+    speakWithElevenLabs(reply);
+  }
+
+  async function speakWithElevenLabs(text) {
+    const apiKey = "sk_6b8f79f4056daffb6996299a647b6ee01c16a70c716cf628"; // <-- Sæt din ElevenLabs API-nøgle her
+ const voiceId = "NOpBlnGInO9m6vDvFkFC"; // Ida (dansk)
+const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+const res = await fetch(url, {
+  method: 'POST',
+  headers: {
+    'Accept': 'audio/mpeg',
+    'Content-Type': 'application/json',
+    'xi-api-key': apiKey
+  },
+  body: JSON.stringify({
+    text: text,
+    model_id: "eleven_multilingual_v1", // Bedre model
+    voice_settings: { stability: 0.5, similarity_boost: 0.5 }
+  })
+});
+    if (res.ok) {
+      const audioBlob = await res.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audioPlayer = document.getElementById('audioPlayer');
+      audioPlayer.src = audioUrl;
+      audioPlayer.style.display = "block";
+      audioPlayer.play();
+    } else {
+      document.getElementById('response').innerText += "\n(Kunne ikke hente lyd fra ElevenLabs)";
+    }
+  }
+</script>
+<!-- ... eksisterende kode ... -->
