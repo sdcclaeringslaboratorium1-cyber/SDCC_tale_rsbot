@@ -7,6 +7,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+///hejsa!
+
 // OpenAI endpoint
 app.post('/api/chat', async (req, res) => {
   try {
