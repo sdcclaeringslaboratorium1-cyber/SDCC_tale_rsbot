@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat med Mogens</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js"></script>
+</head>
+<body>
+  <h1>Chat med Mogens TEST</h1>
+  <h3>
+    Mogens er 77 og har haft diabetes i 20 år.<br>
+    Han har med en langtidsblodsukkermåling konstateret for højt blodsukkerniveau.<br>
+    Din opgave er at tage en faglig snak med Mogens om opstart på insulinbehandling.
+  </h3>
+  <h2 id="mogensStatus">Mogens' nuværende attitude: Meget kritisk / lukket / modstand</h2>
+  <input type="text" id="prompt" placeholder="Skriv besked..." />
+  <button id="micButton" style="background:none;border:none;cursor:pointer;vertical-align:middle;">
+    <!-- Mikrofon-ikon SVG -->
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="12" fill="#f0f0f0"/>
+      <rect x="9" y="5" width="6" height="10" rx="3" fill="#333"/>
+      <rect x="11" y="15" width="2" height="4" rx="1" fill="#333"/>
+      <rect x="8" y="19" width="8" height="2" rx="1" fill="#333"/>
+    </svg>
+  </button>
+  <button onclick="sendMessage()">Send</button>
+  <pre id="response"></pre>
+  <audio id="audioPlayer" controls style="display:none;"></audio>
+
+  <div id="adviceBox">
+  <h1>5 råd til en god patientsamtale</h1>
+  <ol>
+    <li>Start med nærvær og klar rammesætning</li>
+    <li>Lyt aktivt og stil åbne spørgsmål</li>
+    <li>Vis empati og anerkend patientens perspektiv</li>
+    <li>Opsummer og afstem forståelsen undervejs</li>
+    <li>Afslut med klare aftaler og mulighed for spørgsmål</li>
+  </ol>
+</div>
+</body>
+</html>
