@@ -2,41 +2,93 @@
 <html lang="da">
 <head>
   <meta charset="UTF-8">
-  <title>Chat med Mogens</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat med Mogens - SDCC Læring</title>
   <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="script.js"></script>
 </head>
 <body>
-  <h1>Chat med Mogens TEST</h1>
-  <h3>
-    Mogens er 77 og har haft diabetes i 20 år.<br>
-    Han har med en langtidsblodsukkermåling konstateret for højt blodsukkerniveau.<br>
-    Din opgave er at tage en faglig snak med Mogens om opstart på insulinbehandling.
-  </h3>
-  <h2 id="mogensStatus">Mogens' nuværende attitude: Meget kritisk / lukket / modstand</h2>
-  <input type="text" id="prompt" placeholder="Skriv besked..." />
-  <button id="micButton" style="background:none;border:none;cursor:pointer;vertical-align:middle;">
-    <!-- Mikrofon-ikon SVG -->
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="12" fill="#f0f0f0"/>
-      <rect x="9" y="5" width="6" height="10" rx="3" fill="#333"/>
-      <rect x="11" y="15" width="2" height="4" rx="1" fill="#333"/>
-      <rect x="8" y="19" width="8" height="2" rx="1" fill="#333"/>
-    </svg>
-  </button>
-  <button onclick="sendMessage()">Send</button>
-  <pre id="response"></pre>
-  <audio id="audioPlayer" controls style="display:none;"></audio>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="header-content">
+        <div class="logo">
+          <h1>SDCC Læring</h1>
+          <p>Steno Diabetes Center Copenhagen</p>
+        </div>
+      </div>
+    </div>
+  </header>
 
-  <div id="adviceBox">
-  <h1>5 råd til en god patientsamtale</h1>
-  <ol>
-    <li>Start med nærvær og klar rammesætning</li>
-    <li>Lyt aktivt og stil åbne spørgsmål</li>
-    <li>Vis empati og anerkend patientens perspektiv</li>
-    <li>Opsummer og afstem forståelsen undervejs</li>
-    <li>Afslut med klare aftaler og mulighed for spørgsmål</li>
-  </ol>
-</div>
+  <!-- Main Content -->
+  <main class="main">
+    <div class="container">
+      <!-- Page Header -->
+      <div class="page-header">
+        <h2>Patient Simulator: Mogens Mortensen</h2>
+        <p class="subtitle">Øv dig i patientsamtaler med vores interaktive simulator</p>
+      </div>
+
+      <!-- Status Card -->
+      <div class="status-card">
+        <h3 id="mogensStatus">Mogens' nuværende attitude: Meget kritisk / lukket / modstand</h3>
+        <div class="status-indicator">
+          <span class="status-label">Status:</span>
+          <span class="status-value" id="statusValue">1</span>
+          <span class="status-bar">
+            <div class="status-fill" id="statusFill"></div>
+          </span>
+        </div>
+      </div>
+
+      <!-- Layout Container for Chat og Advice -->
+      <div class="layout-container">
+        <!-- Chat Interface -->
+        <div class="chat-container">
+          <div class="chat-header">
+            <h4>Chat med Mogens</h4>
+            <p>Mogens er 77 og har haft diabetes i 20 år. Han har med en langtidsblodsukkermåling konstateret for højt blodsukkerniveau. Din opgave er at tage en faglig snak med Mogens om opstart på insulinbehandling.</p>
+          </div>
+          
+          <div class="input-group">
+            <input type="text" id="prompt" placeholder="Skriv din besked til Mogens..." class="chat-input" />
+            <button id="micButton" class="mic-button" title="Tal til Mogens">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="12" fill="currentColor"/>
+                <rect x="9" y="5" width="6" height="10" rx="3" fill="white"/>
+                <rect x="11" y="15" width="2" height="4" rx="1" fill="white"/>
+                <rect x="8" y="19" width="8" height="2" rx="1" fill="white"/>
+              </svg>
+            </button>
+            <button onclick="sendMessage()" class="send-button">Send</button>
+          </div>
+
+          <div class="chat-messages" id="response"></div>
+          
+          <audio id="audioPlayer" controls style="display:none;" class="audio-player"></audio>
+        </div>
+
+        <!-- Advice Box -->
+        <div class="advice-box">
+          <h3>5 råd til en god patientsamtale</h3>
+          <ol class="advice-list">
+            <li>Start med nærvær og klar rammesætning</li>
+            <li>Lyt aktivt og stil åbne spørgsmål</li>
+            <li>Vis empati og anerkend patientens perspektiv</li>
+            <li>Opsummer og afstem forståelsen undervejs</li>
+            <li>Afslut med klare aftaler og mulighed for spørgsmål</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2024 Steno Diabetes Center Copenhagen. Alle rettigheder forbeholdes.</p>
+    </div>
+  </footer>
 </body>
 </html>

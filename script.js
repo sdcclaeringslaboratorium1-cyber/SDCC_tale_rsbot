@@ -155,7 +155,35 @@ function updateMogensStatus(reply) {
       // Opdater h2-elementet med ny status
       const statusText = getStatusDescription(mogensStatus);
       document.getElementById('mogensStatus').innerText = `Mogens' nuværende attitude: ${statusText}`;
+      
+      // Opdater status-værdien
+      document.getElementById('statusValue').innerText = mogensStatus;
+      
+      // Opdater status-bar'en
+      const statusFill = document.getElementById('statusFill');
+      const percentage = (mogensStatus / 5) * 100;
+      statusFill.style.width = percentage + '%';
+      
+      // Tilføj visuel feedback
+      updateStatusBarColor(mogensStatus);
     }
+  }
+}
+
+// Funktion: Opdater status-bar farve baseret på status
+function updateStatusBarColor(status) {
+  const statusFill = document.getElementById('statusFill');
+  const statusValue = document.getElementById('statusValue');
+  
+  // Fjern alle farve-klasser
+  statusValue.className = 'status-value';
+  
+  if (status <= 2) {
+    statusValue.style.background = '#ef4444'; // Rød for kritisk
+  } else if (status === 3) {
+    statusValue.style.background = '#f59e0b'; // Orange for neutral
+  } else {
+    statusValue.style.background = '#10b981'; // Grøn for positiv
   }
 }
 
