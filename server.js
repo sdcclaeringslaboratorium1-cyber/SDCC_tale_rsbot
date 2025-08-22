@@ -97,7 +97,10 @@ Du svarer altid som Mogens – og holder karakter.`
 app.post('/api/speak', async (req, res) => {
   try {
     const text = req.body.text;
+    const voiceSettings = req.body.voice_settings || { stability: 0.5, similarity_boost: 0.5 };
     const voiceId = "oR7UI6bWI8DTn0Oe1kc3"; // Ida (dansk)
+
+    console.log('Modtog voice settings:', voiceSettings);
 
     // Kald ElevenLabs API for tekst-til-tale
     const response = await axios.post(
@@ -105,7 +108,7 @@ app.post('/api/speak', async (req, res) => {
       {
         text: text,
         model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.5, similarity_boost: 0.5 }
+        voice_settings: voiceSettings
       },
       {
         headers: {

@@ -20,7 +20,7 @@ body {
 
 /* Header */
 .header {
-  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
   color: white;
   padding: 1rem 0;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -77,7 +77,7 @@ body {
 .page-header h2 {
   font-size: 2.5rem;
   font-weight: 700;
-  color: #1e40af;
+  color: #1e3a8a;
   margin-bottom: 1rem;
 }
 
@@ -165,7 +165,7 @@ body {
 
 .chat-header h4 {
   font-size: 1.5rem;
-  color: #1e40af;
+  color: #1e3a8a;
   margin-bottom: 1rem;
 }
 
@@ -173,6 +173,72 @@ body {
   color: #64748b;
   max-width: 700px;
   margin: 0 auto;
+}
+
+.mogens-image {
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.mogens-portrait {
+  width: 300px;
+  height: 300px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 3px solid #e2e8f0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.mogens-profile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2rem;
+  align-items: center;
+  margin: 2rem 0;
+}
+
+.mogens-status-info h3 {
+  color: #1e3a8a;
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+}
+
+.mogens-status-info .status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mogens-status-info .status-label {
+  font-weight: 600;
+  color: #64748b;
+}
+
+.mogens-status-info .status-value {
+  background: #1e3a8a;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 700;
+  min-width: 40px;
+  text-align: center;
+}
+
+.mogens-status-info .status-bar {
+  flex: 1;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 200px;
+}
+
+.mogens-status-info .status-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%);
+  width: 20%;
+  transition: width 0.5s ease;
 }
 
 .input-group {
@@ -193,11 +259,11 @@ body {
 
 .chat-input:focus {
   outline: none;
-  border-color: #1e40af;
+  border-color: #1e3a8a;
 }
 
 .mic-button {
-  background: #10b981;
+  background: #059669;
   color: white;
   border: none;
   padding: 1rem;
@@ -210,12 +276,12 @@ body {
 }
 
 .mic-button:hover {
-  background: #059669;
+  background: #047857;
   transform: translateY(-2px);
 }
 
 .mic-button.recording {
-  background: #ef4444;
+  background: #dc2626;
   animation: pulse 1.5s infinite;
 }
 
@@ -226,7 +292,7 @@ body {
 }
 
 .send-button {
-  background: #1e40af;
+  background: #1e3a8a;
   color: white;
   border: none;
   padding: 1rem 2rem;
@@ -234,10 +300,15 @@ body {
   cursor: pointer;
   font-weight: 600;
   transition: all 0.3s ease;
+  height: 56px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .send-button:hover {
-  background: #1d4ed8;
+  background: #1e40af;
   transform: translateY(-2px);
 }
 
@@ -271,7 +342,7 @@ body {
 }
 
 .advice-box h3 {
-  color: #1e40af;
+  color: #1e3a8a;
   margin-bottom: 1.5rem;
   font-size: 1.5rem;
 }
@@ -298,7 +369,7 @@ body {
   position: absolute;
   left: 0;
   top: 1rem;
-  background: #1e40af;
+  background: #1e3a8a;
   color: white;
   width: 24px;
   height: 24px;
@@ -320,6 +391,72 @@ body {
 }
 
 .footer p {
+  opacity: 0.8;
+}
+
+/* Audio Control Overlay */
+.audio-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  width: 80%; /* Kun 10% af bredden */
+  
+  height: calc(100vh - 300px); /* Dækker fra bunden og op til 300px fra toppen */
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(5px);
+}
+
+/* Skjul overlayet permanent når det er blevet brugt */
+.audio-overlay.used {
+  display: none !important;
+}
+
+.audio-overlay-content {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 3rem;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.audio-overlay-content h3 {
+  color: #1e3a8a;
+  font-size: 1.8rem;
+  margin-bottom: 2rem;
+  font-weight: 600;
+}
+
+.start-audio-btn {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  color: white;
+  border: none;
+  padding: 1rem 3rem;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
+}
+
+.start-audio-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(30, 58, 138, 0.4);
+}
+
+.browser-warning {
+  color: #dc2626;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin: 0;
   opacity: 0.8;
 }
 

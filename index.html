@@ -9,13 +9,22 @@
   <script src="script.js"></script>
 </head>
 <body>
+  <!-- Audio Control Overlay -->
+  <div id="audioOverlay" class="audio-overlay">
+    <div class="audio-overlay-content">
+      <h3>Skru op for din lyd</h3>
+      <button id="startAudioBtn" class="start-audio-btn">Klar</button>
+      <p class="browser-warning">(Chatbot virker ikke i MS Edge browseren)</p>
+    </div>
+  </div>
+
   <!-- Header -->
   <header class="header">
     <div class="container">
       <div class="header-content">
         <div class="logo">
           <h1>SDCC Læring</h1>
-          <p>Steno Diabetes Center Copenhagen</p>
+          <p>Steno Diabetes Center Copenhagen!</p>
         </div>
       </div>
     </div>
@@ -30,37 +39,39 @@
         <p class="subtitle">Øv dig i patientsamtaler med vores interaktive simulator</p>
       </div>
 
-      <!-- Status Card -->
-      <div class="status-card">
-        <h3 id="mogensStatus">Mogens' nuværende attitude: Meget kritisk / lukket / modstand</h3>
-        <div class="status-indicator">
-          <span class="status-label">Status:</span>
-          <span class="status-value" id="statusValue">1</span>
-          <span class="status-bar">
-            <div class="status-fill" id="statusFill"></div>
-          </span>
-        </div>
-      </div>
-
       <!-- Layout Container for Chat og Advice -->
       <div class="layout-container">
         <!-- Chat Interface -->
         <div class="chat-container">
           <div class="chat-header">
             <h4>Chat med Mogens</h4>
-            <p>Mogens er 77 og har haft diabetes i 20 år. Han har med en langtidsblodsukkermåling konstateret for højt blodsukkerniveau. Din opgave er at tage en faglig snak med Mogens om opstart på insulinbehandling.</p>
-          </div>
+            <p>Mogens er 77 og har haft diabetes i 20 år. <br/></p><h4></h4><b>Din opgave er at tale med Mogens om at måle sit blodsukker hver dag morgen og aften med henblik på muligvis at starte på insulinbehandling </b></h4>
+          
+            <div class="mogens-profile">
+              <div class="mogens-image">
+                <img src="images/Mogens_12_unhappy.png" alt="Mogens Mortensen" class="mogens-portrait">
+              </div>
+              <div class="mogens-status-info">
+                <h3 id="mogensStatus">Mogens' nuværende attitude: Meget kritisk overfor dig</h3>
+                <div class="status-indicator">
+                  <span class="status-label">Status:</span>
+                  <span class="status-value" id="statusValue">1</span>
+                  <span class="status-bar">
+                    <div class="status-fill" id="statusFill"></div>
+                  </span>
+                </div>
+              </div>
+            </div>
+           </div>
           
           <div class="input-group">
-            <input type="text" id="prompt" placeholder="Skriv din besked til Mogens..." class="chat-input" />
             <button id="micButton" class="mic-button" title="Tal til Mogens">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="12" fill="currentColor"/>
-                <rect x="9" y="5" width="6" height="10" rx="3" fill="white"/>
-                <rect x="11" y="15" width="2" height="4" rx="1" fill="white"/>
-                <rect x="8" y="19" width="8" height="2" rx="1" fill="white"/>
+                <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" fill="currentColor"/>
+                <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 0010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" fill="currentColor"/>
               </svg>
             </button>
+            <input type="text" id="prompt" placeholder="Skriv din besked til Mogens..." class="chat-input" />
             <button onclick="sendMessage()" class="send-button">Send</button>
           </div>
 
