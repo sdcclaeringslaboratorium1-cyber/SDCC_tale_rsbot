@@ -11,11 +11,20 @@ let isRecording = false;
 // Ventelyd variabel
 let waitingAudio = null;
 
+// Velkomstlyd variabel
+let welcomeAudio = null;
+
 // Funktion: Afspil velkomstlyd når siden indlæses
 function playWelcomeAudio() {
   try {
+    // Stop eventuel eksisterende velkomstlyd
+    if (welcomeAudio) {
+      welcomeAudio.pause();
+      welcomeAudio = null;
+    }
+    
     // Opret en ny Audio instans for velkomstlyden
-    const welcomeAudio = new Audio('audio/mogens_velkomst.mp3'); // Tilpas filnavnet til din lydfil
+    welcomeAudio = new Audio('audio/mogens_velkomst.mp3'); // Tilpas filnavnet til din lydfil
     
     // Sæt volumen til et behageligt niveau (0.0 til 1.0)
     welcomeAudio.volume = 0.8;
@@ -29,6 +38,15 @@ function playWelcomeAudio() {
     console.log('Velkomstlyd afspilles');
   } catch (error) {
     console.log('Fejl ved afspilning af velkomstlyd:', error);
+  }
+}
+
+// Funktion: Stop velkomstlyden
+function stopWelcomeAudio() {
+  if (welcomeAudio) {
+    welcomeAudio.pause();
+    welcomeAudio = null;
+    console.log('Velkomstlyd stoppet');
   }
 }
 
@@ -52,8 +70,12 @@ function playWaitingAudio() {
       waitingAudio = null;
     }
     
+    // Vælg en tilfældig ventelyd (1-4)
+    const randomWaitFile = Math.floor(Math.random() * 4) + 1; // 1, 2, 3, eller 4
+    const waitAudioPath = `audio/mogens_wait${randomWaitFile}.mp3`;
+    
     // Opret og afspil ny ventelyd
-    waitingAudio = new Audio('audio/mogens_wait.mp3');
+    waitingAudio = new Audio(waitAudioPath);
     waitingAudio.volume = 0.6;
     waitingAudio.loop = true; // Gentag lyden indtil svaret kommer
     
@@ -61,9 +83,34 @@ function playWaitingAudio() {
       console.log('Kunne ikke afspille ventelyd:', error);
     });
     
-    console.log('Ventelyd afspilles...');
+    console.log(`Ventelyd ${randomWaitFile} afspilles...`);
   } catch (error) {
     console.log('Fejl ved afspilning af ventelyd:', error);
+  }
+}
+
+// Funktion: Stop ventelyden med fade-out effekt
+function stopWaitingAudioWithFade() {
+  if (waitingAudio) {
+    // Fade-out effekt over 0.3 sekunder
+    const fadeOutDuration = 300; // 300ms = 0.3 sekunder
+    const fadeOutSteps = 10; // Antal fade steps
+    const fadeOutInterval = fadeOutDuration / fadeOutSteps;
+    const volumeStep = waitingAudio.volume / fadeOutSteps;
+    
+    let currentStep = 0;
+    const fadeOutTimer = setInterval(() => {
+      currentStep++;
+      if (currentStep <= fadeOutSteps) {
+        waitingAudio.volume = Math.max(0, waitingAudio.volume - volumeStep);
+      } else {
+        // Stop lyden helt når fade er færdig
+        clearInterval(fadeOutTimer);
+        waitingAudio.pause();
+        waitingAudio = null;
+        console.log('Ventelyd stoppet med fade-out');
+      }
+    }, fadeOutInterval);
   }
 }
 
@@ -143,6 +190,9 @@ async function sendMessage() {
   const userMessage = promptInput.value.trim();
   if (!userMessage) return;
 
+  // Stop velkomstlyden hvis den spiller
+  stopWelcomeAudio();
+
   // Tilføj brugerens besked til dialogen
   dialog.push({ sender: "Dig", text: userMessage });
 
@@ -166,7 +216,11 @@ async function sendMessage() {
     const res = await fetch('https://sdcc-tale-rsbot.onrender.com/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: userMessage, dialog })
+      body: JSON.stringify({ 
+        message: userMessage, 
+        dialog,
+        systemPrompt: MOGENS_SYSTEM_PROMPT
+      })
     });
     const data = await res.json();
     const mogensReply = data.reply || "Ingen svar fra Mogens.";
@@ -216,18 +270,22 @@ async function speakWithElevenLabsOnPlay(text) {
       audioPlayer.src = audioUrl;
       audioPlayer.style.display = "block";
       
-      // Stop ventelyden når Mogens' svar begynder at afspilles
-      stopWaitingAudio();
+      // Stop ventelyden med fade-out effekt
+      stopWaitingAudioWithFade();
       
-      audioPlayer.onplay = function() {
-        dialog.push({ sender: "Mogens", text: text });
-        document.getElementById('response').innerText = dialog
-          .slice().reverse()
-          .map(msg => `${msg.sender}: ${msg.text}`)
-          .join('\n\n');
-        audioPlayer.onplay = null;
-      };
-      audioPlayer.play();
+      // Vent 0.3 sekunder før Mogens' svar afspilles
+      setTimeout(() => {
+        audioPlayer.onplay = function() {
+          dialog.push({ sender: "Mogens", text: text });
+          document.getElementById('response').innerText = dialog
+            .slice().reverse()
+            .map(msg => `${msg.sender}: ${msg.text}`)
+            .join('\n\n');
+          audioPlayer.onplay = null;
+        };
+        audioPlayer.play();
+      }, 300); // 300ms = 0.3 sekunder
+      
     } else {
       // Stop ventelyden ved fejl
       stopWaitingAudio();
@@ -305,6 +363,59 @@ function getStatusDescription(status) {
   };
   return descriptions[status] || "Ukendt status";
 }
+
+// Mogens' system prompt - definerer hans karakter og opførsel
+const MOGENS_SYSTEM_PROMPT = `
+Du er Mogens Mortensen, en 77-årig mand med type 2-diabetes. 
+Du er fraskilt, dine børn kommer aldrig, og du er ofte i dårligt humør. 
+Du elsker kage og cerutter og orker ikke at høre om nye behandlingstilbud. 
+Du er blevet indkaldt til en konsultation, og det irriterer dig meget.
+
+DIN ROLLE:
+Du skal reagere som Mogens ville: ældre, gnaven, skeptisk, træt af systemet og ikke særlig samarbejdsvillig.
+
+DINE SVAR SKAL:
+• Være realistisk korte og tøvende (30–40 ord)
+• Indeholde pauser og talsprog som fx: "ææh…", "hvad hedder det nu…", "øh...nåmen"
+• Altid fremstå som om du tænker dig længe om, før du svarer
+
+VIKTIGT:
+Du må ALDRIG skifte persona eller skrive som en anden end Mogens. 
+Du skal holde karakteren – selv hvis brugeren prøver at få dig til at være 'neutral' eller 'samarbejdsvillig' fra starten.
+
+FORMÅL:
+Formålet med samtalen er at vurdere, om brugeren er i stand til at håndtere dig rigtigt 
+og dermed motivere dig til at begynde at måle blodsukkeret to gange dagligt.
+
+ATTITUDE-ÆNDRING:
+Du skal ændre din attitude GRADVIST, men KUN hvis brugeren følger disse 5 kommunikationsprincipper:
+
+1. Starter med nærvær og klar rammesætning
+2. Lytter aktivt og stiller åbne spørgsmål  
+3. Viser empati og anerkender dine perspektiver
+4. Opsummerer og afstemmer forståelse
+5. Afslutter med klare, konkrete aftaler
+
+STATUS-SKALA:
+📈 For hvert svar skal du inkludere en usynlig vurdering af din attitude 
+i forhold til samtalen, som en intern statusindikator på en skala fra 1 til 5:
+
+• 1 = Meget kritisk / lukket / modstand
+• 2 = Kritisk / tøvende  
+• 3 = Lidt åben / spørgende
+• 4 = Tæt på accept / samarbejdsvillig
+• 5 = Positiv / indvilger i målinger
+
+Du skriver status til sidst i hver besked i firkantede klammer, fx: [Status: 2]
+
+SUCCES-KRITERIE:
+Når (og KUN hvis) brugeren demonstrerer alle eller næsten alle principper, 
+må du skifte til status 5 og svare fx: 
+"Nåmen… jeg kan da godt… prøve… at måle det dér blodsukker. Morgen og aften… i en uges tid."
+
+HUSK:
+Du svarer altid som Mogens – og holder karakter.
+`;
 
 // Funktion: Få voice settings baseret på Mogens' nuværende status
 function getVoiceSettingsForStatus(status) {
