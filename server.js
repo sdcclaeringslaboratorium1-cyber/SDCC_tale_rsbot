@@ -149,13 +149,13 @@ VURDERING:
 - Giv en score fra 1-10 (10 = fremragende)
 - Vurder om ytringen bygger videre på patientens svar
 - Identificer 1-2 styrker
-- Giv 1 konkret forbedringsforslag
-- Hold det til max 80 ord
+- Idetificer 1 fokus i forhold til de 5 kommunikationsprincipper hvor de er i samtalen 
+- Hold det til max 20 ord
 
 FORMAT:
 [Score: X/10]
 [Styrker: ...]
-[Forbedringer: ...]`
+[Fokus: ...]`
       },
       // Tilføj samtale-kontekst
       ...conversationContext.map(msg => ({
