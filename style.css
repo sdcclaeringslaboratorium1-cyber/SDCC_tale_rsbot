@@ -312,16 +312,56 @@ body {
   transform: translateY(-2px);
 }
 
+.send-button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.chat-input:disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.mic-button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 /* Chat Messages */
 .chat-messages {
   background: #f8fafc;
   border-radius: 8px;
   padding: 1.5rem;
   min-height: 200px;
+  max-height: 500px;
   border: 1px solid #e2e8f0;
   white-space: pre-wrap;
   font-family: 'Inter', sans-serif;
   line-height: 1.6;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .audio-player {
@@ -354,7 +394,7 @@ body {
 
 .advice-list li {
   counter-increment: advice-counter;
-  padding: 1rem 0;
+  padding: 0.5rem 0;
   border-bottom: 1px solid #f1f5f9;
   position: relative;
   padding-left: 3rem;
@@ -368,17 +408,148 @@ body {
   content: counter(advice-counter);
   position: absolute;
   left: 0;
-  top: 1rem;
-  background: #1e3a8a;
-  color: white;
+  top: .9rem;
+  /* background: #1e3a8a; */
+  /* color: white; */
   width: 24px;
   height: 24px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* Feedback Box */
+.feedback-box {
+  //background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+  margin-top: 1.5rem;
+  height: fit-content;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.feedback-box h3 {
+  color: #1e3a8a;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.feedback-content {
+  min-height: 100px;
+}
+
+.feedback-placeholder {
+  color: #94a3b8;
+  font-style: italic;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.feedback-evaluation {
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.feedback-score {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.score-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.score-excellent { background: #10b981; }
+.score-good { background: #f59e0b; }
+.score-poor { background: #ef4444; }
+
+.feedback-details {
+  color: #374151;
+  line-height: 1.6;
+}
+
+/* Score kugler i dialog */
+.score-bubble {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  color: white;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 24px;
   font-size: 0.8rem;
   font-weight: 700;
+  margin-left: 8px;
+  transition: all 0.2s ease;
+  vertical-align: middle;
+}
+
+.score-bubble.clickable {
+  cursor: pointer;
+}
+
+.score-bubble.clickable:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.score-bubble.active {
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.5);
+  transform: scale(1.1);
+}
+
+/* Markering af brugerens tekst */
+.user-message-highlighted {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border-left: 3px solid #1e3a8a;
+  margin: 0.25rem 0;
+  box-shadow: 0 2px 4px rgba(30, 58, 138, 0.15);
+  transition: all 0.3s ease;
+}
+
+.score-bubble.loading {
+  background: #94a3b8;
+  animation: pulse 1.5s infinite;
+}
+
+.score-bubble.score-poor {
+  background: #ef4444; /* Rød for 1-3 */
+}
+
+.score-bubble.score-average {
+  background: #f59e0b; /* Orange for 4-5 */
+}
+
+.score-bubble.score-good {
+  background: #10b981; /* Grøn for 6-7 */
+}
+
+.score-bubble.score-excellent {
+  background: #059669; /* Mørkegrøn for 8-10 */
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 /* Footer */
@@ -396,12 +567,11 @@ body {
 
 /* Audio Control Overlay */
 .audio-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 10%;
-  width: 80%; /* Kun 10% af bredden */
-  
-  height: calc(100vh - 300px); /* Dækker fra bunden og op til 300px fra toppen */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
   background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;

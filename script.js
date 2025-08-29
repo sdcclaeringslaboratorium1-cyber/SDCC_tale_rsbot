@@ -190,17 +190,20 @@ async function sendMessage() {
   const userMessage = promptInput.value.trim();
   if (!userMessage) return;
 
+  // Deaktiver input og send-knap
+  setInputState(false);
+
   // Stop velkomstlyden hvis den spiller
   stopWelcomeAudio();
 
   // Tilføj brugerens besked til dialogen
   dialog.push({ sender: "Dig", text: userMessage });
 
-  // Opdater chatvisning
-  document.getElementById('response').innerText = dialog
-    .slice().reverse()
-    .map(msg => `${msg.sender}: ${msg.text}`)
-    .join('\n\n');
+  // Opdater chatvisning (uden feedback endnu)
+  updateChatDisplay();
+
+  // Vent på Mogens' svar før evaluering
+  // Evaluering sker nu i speakWithElevenLabsOnPlay
 
   // Vent 0.5-1.5 sekunder (tilfældigt) før ventelyden starter
   const randomDelay = Math.floor(Math.random() * 1000) + 500; // 500-1500ms (0.5-1.5 sekunder)
@@ -276,10 +279,22 @@ async function speakWithElevenLabsOnPlay(text) {
       setTimeout(() => {
         audioPlayer.onplay = function() {
           dialog.push({ sender: "Mogens", text: text });
-          document.getElementById('response').innerText = dialog
-            .slice().reverse()
-            .map(msg => `${msg.sender}: ${msg.text}`)
-            .join('\n\n');
+          
+          // Evaluer brugerens sidste besked i relation til Mogens' svar
+          const lastUserMessage = dialog.findLast(msg => msg.sender === "Dig");
+          if (lastUserMessage && !lastUserMessage.feedback) {
+            evaluateUserMessageInContext(lastUserMessage.text, text, dialog).then(evaluation => {
+              if (evaluation) {
+                lastUserMessage.feedback = evaluation;
+                displayFeedback(evaluation);
+                updateChatDisplay();
+              }
+            });
+          }
+          
+          // Genaktiver input
+          setInputState(true);
+          
           audioPlayer.onplay = null;
         };
         audioPlayer.play();
@@ -364,6 +379,184 @@ function getStatusDescription(status) {
 }
 
 
+
+// Funktion: Evaluer brugerens ytring i relation til Mogens' svar
+async function evaluateUserMessageInContext(userMessage, mogensReply, conversationContext) {
+  try {
+    const res = await fetch('https://sdcc-tale-rsbot.onrender.com/api/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        userMessage: userMessage,
+        mogensReply: mogensReply,
+        conversationContext: conversationContext.slice(-5) // Sidste 5 beskeder som kontekst
+      })
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      return data.evaluation;
+    } else {
+      console.error('Fejl ved evaluering:', res.status);
+      return null;
+    }
+  } catch (err) {
+    console.error('Fejl ved evaluering af brugerbesked i kontekst:', err);
+    return null;
+  }
+}
+
+// Funktion: Opdater chat-visningen med score-kugler
+function updateChatDisplay() {
+  const chatMessages = document.getElementById('response');
+  const reversedDialog = dialog.slice().reverse();
+  
+  let chatHTML = '';
+  
+  reversedDialog.forEach((msg, index) => {
+    if (msg.sender === "Dig" && msg.feedback) {
+      // Tilføj score-kugle efter brugerens beskeder
+      const score = extractScoreFromFeedback(msg.feedback);
+      const scoreClass = getScoreClass(score);
+      chatHTML += `<span class="user-message">${msg.sender}: ${msg.text}</span><span class="score-bubble ${scoreClass} clickable" data-feedback="${msg.feedback}" title="Klik for at se feedback (Score: ${score}/10)">${score}</span>\n\n`;
+    } else if (msg.sender === "Dig") {
+      // Brugerbesked uden feedback endnu
+      chatHTML += `<span class="user-message">${msg.sender}: ${msg.text}</span><span class="score-bubble loading" title="Venter på Mogens' svar...">⏳</span>\n\n`;
+    } else {
+      // Mogens' beskeder uden score-kugle
+      chatHTML += `${msg.sender}: ${msg.text}\n\n`;
+    }
+  });
+  
+  chatMessages.innerHTML = chatHTML;
+  
+  // Tilføj click event listeners til score-kuglerne
+  addScoreBubbleClickListeners();
+}
+
+// Funktion: Udtræk score fra feedback-tekst
+function extractScoreFromFeedback(feedback) {
+  const scoreMatch = feedback.match(/\[Score:\s*(\d+)\/10\]/);
+  return scoreMatch ? parseInt(scoreMatch[1]) : 5;
+}
+
+// Funktion: Bestem score-klasse baseret på score
+function getScoreClass(score) {
+  if (score >= 8) return 'score-excellent';
+  if (score >= 6) return 'score-good';
+  if (score >= 4) return 'score-average';
+  return 'score-poor';
+}
+
+// Funktion: Tilføj click event listeners til score-kuglerne
+function addScoreBubbleClickListeners() {
+  const scoreBubbles = document.querySelectorAll('.score-bubble.clickable');
+  
+  scoreBubbles.forEach((bubble) => {
+    bubble.addEventListener('click', function() {
+      const feedback = this.getAttribute('data-feedback');
+      if (feedback) {
+        // Fjern aktiv klasse fra alle andre kugler
+        scoreBubbles.forEach(b => b.classList.remove('active'));
+        
+        // Tilføj aktiv klasse til klikket kugle
+        this.classList.add('active');
+        
+        // Markér brugerens tekst i dialogen
+        highlightUserMessage(this);
+        
+        // Vis feedback i feedback-boksen
+        displayFeedback(feedback);
+        
+        // Scroll til feedback-boksen
+        const feedbackBox = document.querySelector('.feedback-box');
+        if (feedbackBox) {
+          feedbackBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Tilføj highlight effekt
+          feedbackBox.style.boxShadow = '0 0 0 3px rgba(30, 58, 138, 0.3)';
+          setTimeout(() => {
+            feedbackBox.style.boxShadow = '';
+          }, 2000);
+        }
+      }
+    });
+  });
+}
+
+// Funktion: Markér brugerens tekst når score-kugle klikkes
+function highlightUserMessage(clickedBubble) {
+  // Fjern tidligere markeringer
+  const chatMessages = document.getElementById('response');
+  const highlightedMessages = chatMessages.querySelectorAll('.user-message-highlighted');
+  highlightedMessages.forEach(msg => msg.classList.remove('user-message-highlighted'));
+  
+  // Find og markér den klikkede besked
+  const userMessage = clickedBubble.previousElementSibling;
+  if (userMessage && userMessage.classList.contains('user-message')) {
+    userMessage.classList.add('user-message-highlighted');
+  }
+}
+
+// Funktion: Sæt input state (aktiv/deaktiv)
+function setInputState(active) {
+  const promptInput = document.getElementById('prompt');
+  const sendButton = document.querySelector('.send-button');
+  const micButton = document.getElementById('micButton');
+  
+  if (active) {
+    promptInput.disabled = false;
+    promptInput.placeholder = "Skriv din besked til Mogens...";
+    sendButton.disabled = false;
+    sendButton.textContent = "Send";
+    micButton.disabled = false;
+  } else {
+    promptInput.disabled = true;
+    promptInput.placeholder = "Venter på Mogens' svar...";
+    sendButton.disabled = true;
+    sendButton.textContent = "Venter...";
+    micButton.disabled = true;
+  }
+}
+
+// Funktion: Vis feedback i feedback-boksen
+function displayFeedback(evaluation) {
+  const feedbackContent = document.getElementById('feedbackContent');
+  
+  // Parse evalueringen for at udtrække score
+  const scoreMatch = evaluation.match(/\[Score:\s*(\d+)\/10\]/);
+  const score = scoreMatch ? parseInt(scoreMatch[1]) : 5;
+  
+  // Bestem score-klasse
+  let scoreClass = 'score-poor';
+  if (score >= 8) scoreClass = 'score-excellent';
+  else if (score >= 6) scoreClass = 'score-good';
+  else if (score >= 4) scoreClass = 'score-average';
+  else scoreClass = 'score-poor';
+  
+  // Opret feedback HTML
+  const feedbackHTML = `
+    <div class="feedback-evaluation">
+      <div class="feedback-score">
+        <div class="score-circle ${scoreClass}">${score}</div>
+        <div>
+          <strong>Score: ${score}/10</strong>
+          <div style="color: #6b7280; font-size: 0.9rem;">
+            ${score >= 8 ? 'Fremragende' : score >= 6 ? 'God' : score >= 4 ? 'Middel' : 'Skal forbedres'}
+          </div>
+        </div>
+      </div>
+      <div class="feedback-details">
+        ${evaluation.replace(/\[Score:\s*\d+\/10\]/, '').trim()}
+      </div>
+    </div>
+  `;
+  
+  feedbackContent.innerHTML = feedbackHTML;
+  
+  // Opdater chat-visningen for at vise feedback-kugler
+  updateChatDisplay();
+}
 
 // Funktion: Få voice settings baseret på Mogens' nuværende status
 function getVoiceSettingsForStatus(status) {
