@@ -117,21 +117,26 @@ app.post('/api/chat', async (req, res) => {
 // =========================
 // Conversation Evaluation Endpoint
 // =========================
-// Modtager POST-request og evaluerer en enkelt brugerbesked med OpenAI
+// Modtager POST-request og evaluerer en brugerbesked i relation til Mogens' svar
 app.post('/api/evaluate', async (req, res) => {
   try {
     const userMessage = req.body.userMessage;
-    const context = req.body.context || [];
+    const mogensReply = req.body.mogensReply;
+    const conversationContext = req.body.conversationContext || [];
 
     // Byg evaluerings-prompt til OpenAI
     const messages = [
       {
         role: 'system',
-        content: `Du er en ekspert i patientsamtaler og skal evaluere en ENKELT ytring fra en sundhedsprofessionel.
+        content: `Du er en ekspert i patientsamtaler og skal evaluere en sundhedsprofessionels kommunikation i relation til patientens svar.
 
 OPGAVE:
-Vurder denne enkeltstående ytring baseret på de 5 kommunikationsprincipper:
+Vurder sundhedsprofessionellens sidste ytring i forhold til:
+1. Hvordan den reagerer på patientens forrige svar og samtalen
+2. Om den følger de 5 kommunikationsprincipper
+3. Om den er effektiv til at bygge videre på samtalen
 
+KOMMUNIKATIONSPRINCIPPER:
 1. Starter med nærvær og klar rammesætning
 2. Lytter aktivt og stiller åbne spørgsmål  
 3. Viser empati og anerkender patientens perspektiv
@@ -140,8 +145,9 @@ Vurder denne enkeltstående ytring baseret på de 5 kommunikationsprincipper:
 
 VURDERING:
 - Giv en score fra 1-10 (10 = fremragende)
+- Vurder om ytringen bygger videre på patientens svar
 - Identificer 1-2 styrker
-- Giv 1 konkrete forbedringsforslag
+- Giv 1 konkret forbedringsforslag
 - Hold det til max 80 ord
 
 FORMAT:
@@ -149,15 +155,19 @@ FORMAT:
 [Styrker: ...]
 [Forbedringer: ...]`
       },
-      // Tilføj kontekst (sidste 3 beskeder)
-      ...context.map(msg => ({
+      // Tilføj samtale-kontekst
+      ...conversationContext.map(msg => ({
         role: msg.sender === "Dig" ? "user" : "assistant",
         content: msg.text
       })),
-      // Tilføj den nuværende besked der skal evalueres
+      // Tilføj evaluerings-opgaven
       {
         role: 'user',
-        content: `Evaluér denne ytring: "${userMessage}"`
+        content: `Evaluér denne ytring fra sundhedsprofessionellen: "${userMessage}"
+
+Patientens forrige svar: "${mogensReply}"
+
+Vurder om sundhedsprofessionellens ytring er effektiv til at bygge videre på patientens svar og følger kommunikationsprincipperne.`
       }
     ];
 
