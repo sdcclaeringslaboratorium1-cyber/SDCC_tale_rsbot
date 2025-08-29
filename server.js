@@ -115,6 +115,48 @@ app.post('/api/chat', async (req, res) => {
 });
 
 // =========================
+// Conversation Evaluation Endpoint
+// =========================
+// Modtager POST-request og evaluerer samtalen med OpenAI
+app.post('/api/evaluate', async (req, res) => {
+  try {
+    const evaluationPrompt = req.body.prompt;
+
+    // Kald OpenAI API for evaluering
+    const response = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'Du er en ekspert i patientsamtaler og giver konstruktiv feedback på sundhedsprofessionellers kommunikation.'
+          },
+          {
+            role: 'user',
+            content: evaluationPrompt
+          }
+        ],
+        max_tokens: 300,
+        temperature: 0.7
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    // Send evalueringen tilbage til frontend
+    res.json({ evaluation: response.data.choices[0].message.content });
+  } catch (err) {
+    console.error('Fejl ved evaluering:', err.response ? err.response.data : err);
+    res.status(500).json({ error: err.toString() });
+  }
+});
+
+// =========================
 // ElevenLabs Speak-endpoint
 // =========================
 // Modtager POST-request med tekst og returnerer lyd fra ElevenLabs
