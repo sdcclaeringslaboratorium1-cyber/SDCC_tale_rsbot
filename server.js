@@ -130,18 +130,20 @@ app.post('/api/evaluate', async (req, res) => {
         role: 'system',
         content: `Du er en ekspert i patientsamtaler og skal evaluere en sundhedsprofessionels kommunikation i relation til patientens svar.
 
-OPGAVE:
-Vurder sundhedsprofessionellens sidste ytring i forhold til:
-1. Hvordan den reagerer på patientens forrige svar og samtalen
-2. Om den følger de 5 kommunikationsprincipper
-3. Om den er effektiv til at bygge videre på samtalen
-
 KOMMUNIKATIONSPRINCIPPER:
 1. Starter med nærvær og klar rammesætning
 2. Lytter aktivt og stiller åbne spørgsmål  
 3. Viser empati og anerkender patientens perspektiv
 4. Opsummerer og afstemmer forståelse
 5. Afslutter med klare aftaler
+
+OPGAVE:
+Vurder sundhedsprofessionellens sidste ytring i forhold til:
+1. Hvordan den reagerer på patientens forrige svar og samtalen generelt
+2. Om den følger de 5 kommunikationsprincipper og især hvor samtalen er i forhold til start og afslutning
+3. Om den er effektiv til at bygge videre på samtalen
+
+
 
 VURDERING:
 - Giv en score fra 1-10 (10 = fremragende)
