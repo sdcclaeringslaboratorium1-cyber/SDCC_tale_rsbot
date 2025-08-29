@@ -117,19 +117,20 @@ app.post('/api/chat', async (req, res) => {
 // =========================
 // Conversation Evaluation Endpoint
 // =========================
-// Modtager POST-request og evaluerer samtalen med OpenAI
+// Modtager POST-request og evaluerer en enkelt brugerbesked med OpenAI
 app.post('/api/evaluate', async (req, res) => {
   try {
-    const dialog = req.body.dialog || [];
+    const userMessage = req.body.userMessage;
+    const context = req.body.context || [];
 
     // Byg evaluerings-prompt til OpenAI
     const messages = [
       {
         role: 'system',
-        content: `Du er en ekspert i patientsamtaler og skal evaluere en samtale mellem en sundhedsprofessionel og en patient.
+        content: `Du er en ekspert i patientsamtaler og skal evaluere en ENKELT ytring fra en sundhedsprofessionel.
 
 OPGAVE:
-Giv en kort, konstruktiv vurdering af sundhedsprofessionellens kommunikation baseret på de 5 kommunikationsprincipper:
+Vurder denne enkeltstående ytring baseret på de 5 kommunikationsprincipper:
 
 1. Starter med nærvær og klar rammesætning
 2. Lytter aktivt og stiller åbne spørgsmål  
@@ -139,20 +140,25 @@ Giv en kort, konstruktiv vurdering af sundhedsprofessionellens kommunikation bas
 
 VURDERING:
 - Giv en score fra 1-10 (10 = fremragende)
-- Identificer 2-3 styrker
-- Giv 1-2 konkrete forbedringsforslag
-- Hold det til max 150 ord
+- Identificer 1-2 styrker
+- Giv 1 konkrete forbedringsforslag
+- Hold det til max 80 ord
 
 FORMAT:
 [Score: X/10]
 [Styrker: ...]
 [Forbedringer: ...]`
       },
-      // Tilføj hele samtalen som kontekst
-      ...dialog.map(msg => ({
+      // Tilføj kontekst (sidste 3 beskeder)
+      ...context.map(msg => ({
         role: msg.sender === "Dig" ? "user" : "assistant",
         content: msg.text
-      }))
+      })),
+      // Tilføj den nuværende besked der skal evalueres
+      {
+        role: 'user',
+        content: `Evaluér denne ytring: "${userMessage}"`
+      }
     ];
 
     // Kald OpenAI API for evaluering
