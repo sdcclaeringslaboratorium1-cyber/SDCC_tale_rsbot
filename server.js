@@ -120,23 +120,47 @@ app.post('/api/chat', async (req, res) => {
 // Modtager POST-request og evaluerer samtalen med OpenAI
 app.post('/api/evaluate', async (req, res) => {
   try {
-    const evaluationPrompt = req.body.prompt;
+    const dialog = req.body.dialog || [];
+
+    // Byg evaluerings-prompt til OpenAI
+    const messages = [
+      {
+        role: 'system',
+        content: `Du er en ekspert i patientsamtaler og skal evaluere en samtale mellem en sundhedsprofessionel og en patient.
+
+OPGAVE:
+Giv en kort, konstruktiv vurdering af sundhedsprofessionellens kommunikation baseret på de 5 kommunikationsprincipper:
+
+1. Starter med nærvær og klar rammesætning
+2. Lytter aktivt og stiller åbne spørgsmål  
+3. Viser empati og anerkender patientens perspektiv
+4. Opsummerer og afstemmer forståelse
+5. Afslutter med klare aftaler
+
+VURDERING:
+- Giv en score fra 1-10 (10 = fremragende)
+- Identificer 2-3 styrker
+- Giv 1-2 konkrete forbedringsforslag
+- Hold det til max 150 ord
+
+FORMAT:
+[Score: X/10]
+[Styrker: ...]
+[Forbedringer: ...]`
+      },
+      // Tilføj hele samtalen som kontekst
+      ...dialog.map(msg => ({
+        role: msg.sender === "Dig" ? "user" : "assistant",
+        content: msg.text
+      }))
+    ];
 
     // Kald OpenAI API for evaluering
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
         model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: 'Du er en ekspert i patientsamtaler og giver konstruktiv feedback på sundhedsprofessionellers kommunikation.'
-          },
-          {
-            role: 'user',
-            content: evaluationPrompt
-          }
-        ],
+        messages: messages,
         max_tokens: 300,
         temperature: 0.7
       },
