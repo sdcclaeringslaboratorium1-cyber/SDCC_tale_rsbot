@@ -154,8 +154,8 @@ VURDERING:
 
 FORMAT:
 [Score: X/10]
-[Styrker: ...]
-[Fokus: ...]`
+Styrker: Det er godt du... -linjeskift
+Fokus: Du skal fokusere på...
       },
       // Tilføj samtale-kontekst
       ...conversationContext.map(msg => ({
