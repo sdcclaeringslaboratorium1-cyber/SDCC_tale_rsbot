@@ -13,6 +13,20 @@ let config = null;
 
 // Funktion til at hente konfiguration fra GitHub
 async function loadConfig() {
+  // Tjek om vi skal bruge lokal config til test
+  if (process.env.USE_LOCAL_CONFIG === 'true') {
+    console.log('🧪 Test mode: Bruger lokal config.json');
+    try {
+      const configPath = path.join(__dirname, 'config.json');
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      console.log('✅ Lokal config.json indlæst for test');
+      return;
+    } catch (error) {
+      console.error('❌ Kunne ikke indlæse lokal config.json:', error);
+      process.exit(1);
+    }
+  }
+  
   try {
     // Hent konfiguration fra GitHub (hvor resten af koden også ligger)
     const response = await axios.get('https://raw.githubusercontent.com/DIN-BRUGERNAVN/DIN-REPO/main/config.json');
@@ -20,8 +34,17 @@ async function loadConfig() {
     console.log('✅ Konfiguration indlæst fra GitHub');
   } catch (error) {
     console.error('❌ Fejl ved indlæsning af konfiguration fra GitHub:', error);
-    console.error('❌ Sørg for at config.json er tilgængelig på GitHub');
-    process.exit(1);
+    console.log('⚠️ Prøver lokal fallback for test...');
+    
+    // Fallback til lokal fil for test
+    try {
+      const configPath = path.join(__dirname, 'config.json');
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      console.log('✅ Brugt lokal config.json for test');
+    } catch (fallbackError) {
+      console.error('❌ Ingen konfiguration fundet - hverken på GitHub eller lokalt');
+      process.exit(1);
+    }
   }
 }
 
