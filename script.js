@@ -34,11 +34,11 @@ function playWelcomeAudio() {
     }
     
     // Opret en ny Audio instans for velkomstlyden
-    const welcomeFile = config?.characters?.mogens?.audio_files?.welcome || 'audio/mogens_velkomst.mp3';
+    const welcomeFile = config.characters.mogens.audio_files.welcome;
     welcomeAudio = new Audio(welcomeFile);
     
     // Sæt volumen til et behageligt niveau (0.0 til 1.0)
-    welcomeAudio.volume = config?.audio?.welcome_volume || 0.8;
+    welcomeAudio.volume = config.audio.welcome_volume;
     
     // Afspil lyden når siden er klar
     welcomeAudio.play().catch(error => {
@@ -82,18 +82,13 @@ function playWaitingAudio() {
     }
     
     // Vælg en tilfældig ventelyd fra konfigurationen
-    const waitingFiles = config?.characters?.mogens?.audio_files?.waiting || [
-      'audio/mogens_wait1.mp3',
-      'audio/mogens_wait2.mp3', 
-      'audio/mogens_wait3.mp3',
-      'audio/mogens_wait4.mp3'
-    ];
+    const waitingFiles = config.characters.mogens.audio_files.waiting;
     const randomIndex = Math.floor(Math.random() * waitingFiles.length);
     const waitAudioPath = waitingFiles[randomIndex];
     
     // Opret og afspil ny ventelyd
     waitingAudio = new Audio(waitAudioPath);
-    waitingAudio.volume = config?.audio?.waiting_volume || 0.6;
+    waitingAudio.volume = config.audio.waiting_volume;
     waitingAudio.loop = true; // Gentag lyden indtil svaret kommer
     
     waitingAudio.play().catch(error => {
@@ -110,8 +105,8 @@ function playWaitingAudio() {
 function stopWaitingAudioWithFade() {
   if (waitingAudio) {
     // Fade-out effekt fra konfigurationen
-    const fadeOutDuration = config?.audio?.fade_out_duration || 300; // 300ms = 0.3 sekunder
-    const fadeOutSteps = config?.audio?.fade_out_steps || 10; // Antal fade steps
+    const fadeOutDuration = config.audio.fade_out_duration; // 300ms = 0.3 sekunder
+    const fadeOutSteps = config.audio.fade_out_steps; // Antal fade steps
     const fadeOutInterval = fadeOutDuration / fadeOutSteps;
     const volumeStep = waitingAudio.volume / fadeOutSteps;
     
@@ -250,11 +245,11 @@ async function sendMessage() {
   // Start ventelyd med minimal forsinkelse fra konfigurationen
   const isFirstMessage = dialog.length === 1;
   const delayConfig = isFirstMessage ? 
-    config?.timing?.first_message_delay : 
-    config?.timing?.subsequent_message_delay;
+    config.timing.first_message_delay : 
+    config.timing.subsequent_message_delay;
   const randomDelay = isFirstMessage ? 
-    Math.floor(Math.random() * (delayConfig?.max - delayConfig?.min || 200)) + (delayConfig?.min || 100) :
-    Math.floor(Math.random() * (delayConfig?.max - delayConfig?.min || 300)) + (delayConfig?.min || 200);
+    Math.floor(Math.random() * (delayConfig.max - delayConfig.min)) + delayConfig.min :
+    Math.floor(Math.random() * (delayConfig.max - delayConfig.min)) + delayConfig.min;
   console.log(`[${requestId}] ⏱️ Venter ${randomDelay}ms før ventelyd starter...`);
   
   setTimeout(() => {
@@ -347,17 +342,13 @@ async function sendMessage() {
 // Funktion: Afspil ElevenLabs-lyd og tilføj Mogens' svar til dialogen når lyden starter
 async function speakWithElevenLabsOnPlay(text, requestId) {
   try {
-    // Få voice settings baseret på Mogens' nuværende status
-    const voiceSettings = getVoiceSettingsForStatus(mogensStatus);
-    
     console.log(`[${requestId}] 🔊 Starter ElevenLabs lyd generering...`);
 
     const res = await fetch('https://sdcc-tale-rsbot.onrender.com/api/speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        text,
-        voice_settings: voiceSettings
+        text
       })
     });
     
@@ -379,7 +370,7 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
       updateChatDisplay();
       
       // Afspil Mogens' svar med minimal forsinkelse fra konfigurationen
-      const playDelay = config?.audio?.play_delay || 300;
+      const playDelay = config.audio.play_delay;
       setTimeout(() => {
         audioPlayer.onplay = function() {
           // Genaktiver input
@@ -459,13 +450,7 @@ function cleanMogensReply(reply) {
 
 // Funktion: Få beskrivelse af status
 function getStatusDescription(status) {
-  const descriptions = config?.characters?.mogens?.status_descriptions || {
-    1: "Meget kritisk overfor dig",
-    2: "Kritisk og tøvende", 
-    3: "Lidt åben og spørgende",
-    4: "Tæt på accept og samarbejdsvillig",
-    5: "Positiv og indvilger i målinger"
-  };
+  const descriptions = config.characters.mogens.status_descriptions;
   return descriptions[status] || "Ukendt status";
 }
 
@@ -650,66 +635,19 @@ function displayFeedback(evaluation) {
   updateChatDisplay();
 }
 
-// Funktion: Få voice settings baseret på Mogens' nuværende status
-function getVoiceSettingsForStatus(status) {
-  // Base voice settings fra konfigurationen
-  const baseSettings = config?.characters?.mogens?.voice_settings?.base || {
-    stability: 0.7,
-    similarity_boost: 0.8,
-    use_speaker_boost: true
-  };
 
-  // Juster tonefald baseret på status fra konfigurationen
-  const statusVariations = config?.characters?.mogens?.voice_settings?.status_variations || {};
-  const statusSettings = statusVariations[status] || {};
-  
-  return {
-    ...baseSettings,
-    ...statusSettings
-  };
-}
-
-// Funktion: Hent konfiguration fra GitHub
+// Funktion: Hent konfiguration fra server
 async function loadConfig() {
   try {
-    // Hent konfiguration direkte fra GitHub (hvor resten af koden også ligger)
-    const response = await fetch('https://raw.githubusercontent.com/DIN-BRUGERNAVN/DIN-REPO/main/config.json');
+    // Hent konfiguration via server
+    const response = await fetch('http://localhost:3000/api/config');
     config = await response.json();
-    console.log('✅ Konfiguration indlæst fra GitHub');
+    console.log('✅ Konfiguration indlæst fra server');
     
     // Opdater UI med konfigurationen
     updateUIWithConfig();
   } catch (error) {
-    console.error('❌ Fejl ved indlæsning af konfiguration fra GitHub:', error);
-    // Brug fallback konfiguration
-    config = {
-      characters: {
-        mogens: {
-          audio_files: {
-            welcome: 'audio/mogens_velkomst.mp3',
-            waiting: ['audio/mogens_wait1.mp3', 'audio/mogens_wait2.mp3', 'audio/mogens_wait3.mp3', 'audio/mogens_wait4.mp3']
-          },
-          status_descriptions: {
-            1: "Meget kritisk overfor dig",
-            2: "Kritisk og tøvende", 
-            3: "Lidt åben og spørgende",
-            4: "Tæt på accept og samarbejdsvillig",
-            5: "Positiv og indvilger i målinger"
-          }
-        }
-      },
-      audio: {
-        welcome_volume: 0.8,
-        waiting_volume: 0.6,
-        fade_out_duration: 300,
-        fade_out_steps: 10,
-        play_delay: 300
-      },
-      timing: {
-        first_message_delay: { min: 100, max: 300 },
-        subsequent_message_delay: { min: 200, max: 500 }
-      }
-    };
+    console.error('❌ Fejl ved indlæsning af konfiguration:', error);
   }
 }
 

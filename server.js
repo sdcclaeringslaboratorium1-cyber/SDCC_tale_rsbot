@@ -60,6 +60,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve statiske filer (HTML, CSS, JS, audio, images)
+app.use(express.static(__dirname));
+
 // =====================
 // OpenAI Chat-endpoint
 // =====================
@@ -242,7 +245,7 @@ app.post('/api/speak', async (req, res) => {
   
   try {
     const text = req.body.text;
-    const voiceSettings = req.body.voice_settings || { stability: 0.5, similarity_boost: 0.5 };
+    const voiceSettings = { stability: 0.7, similarity_boost: 0.8, use_speaker_boost: true };
     const voiceId = mogensConfig.voice_id;
 
     console.log(`[${requestId}] 📝 Tekst til lyd: "${text}"`);
