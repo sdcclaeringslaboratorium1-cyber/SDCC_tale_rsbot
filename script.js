@@ -709,8 +709,7 @@ async function loadConfig() {
         first_message_delay: { min: 100, max: 300 },
         subsequent_message_delay: { min: 200, max: 500 }
       }
-          };
-    }
+    };
   }
 }
 
