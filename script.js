@@ -14,6 +14,13 @@ let waitingAudio = null;
 // Velkomstlyd variabel
 let welcomeAudio = null;
 
+// Performance tracking
+let performanceMetrics = {
+  firstResponseTime: null,
+  averageResponseTime: 0,
+  responseCount: 0
+};
+
 // Funktion: Afspil velkomstlyd når siden indlæses
 function playWelcomeAudio() {
   try {
@@ -184,11 +191,39 @@ function updateMicButton(recording) {
   }
 }
 
+// Funktion: Opdater performance dashboard
+function updatePerformanceDashboard() {
+  const firstResponseElement = document.getElementById('firstResponseTime');
+  const averageResponseElement = document.getElementById('averageResponseTime');
+  const responseCountElement = document.getElementById('responseCount');
+  
+  if (firstResponseElement) {
+    firstResponseElement.textContent = performanceMetrics.firstResponseTime ? 
+      `${performanceMetrics.firstResponseTime}ms` : '-';
+  }
+  
+  if (averageResponseElement) {
+    averageResponseElement.textContent = performanceMetrics.averageResponseTime ? 
+      `${Math.round(performanceMetrics.averageResponseTime)}ms` : '-';
+  }
+  
+  if (responseCountElement) {
+    responseCountElement.textContent = performanceMetrics.responseCount;
+  }
+}
+
 // Funktion: Send besked til backend og opdater UI
 async function sendMessage() {
+  const startTime = Date.now();
+  const requestId = Math.random().toString(36).substr(2, 9);
+  
+  console.log(`[${requestId}] 🚀 FRONTEND: Besked sendt - ${new Date().toISOString()}`);
+  
   const promptInput = document.getElementById('prompt');
   const userMessage = promptInput.value.trim();
   if (!userMessage) return;
+
+  console.log(`[${requestId}] 📝 Brugerbesked: "${userMessage}"`);
 
   // Deaktiver input og send-knap
   setInputState(false);
@@ -202,20 +237,23 @@ async function sendMessage() {
   // Opdater chatvisning (uden feedback endnu)
   updateChatDisplay();
 
-  // Vent på Mogens' svar før evaluering
-  // Evaluering sker nu i speakWithElevenLabsOnPlay
-
-  // Vent 0.5-1.5 sekunder (tilfældigt) før ventelyden starter
-  const randomDelay = Math.floor(Math.random() * 1000) + 500; // 500-1500ms (0.5-1.5 sekunder)
-  console.log(`Venter ${randomDelay}ms før ventelyd starter...`);
+  // Start ventelyd med minimal forsinkelse (kun 100-300ms for første svar, 200-500ms for efterfølgende)
+  const isFirstMessage = dialog.length === 1;
+  const randomDelay = isFirstMessage ? 
+    Math.floor(Math.random() * 200) + 100 : // 100-300ms for første besked
+    Math.floor(Math.random() * 300) + 200;   // 200-500ms for efterfølgende beskeder
+  console.log(`[${requestId}] ⏱️ Venter ${randomDelay}ms før ventelyd starter...`);
   
   setTimeout(() => {
     // Start ventelyd mens vi venter på svar
     playWaitingAudio();
   }, randomDelay);
 
-  // Send besked til backend (OpenAI)
+  // Send besked til backend (OpenAI) med timeout
   try {
+    console.log(`[${requestId}] 🤖 Sender til OpenAI API...`);
+    const openaiStartTime = Date.now();
+    
     const res = await fetch('https://sdcc-tale-rsbot.onrender.com/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -224,8 +262,14 @@ async function sendMessage() {
         dialog
       })
     });
+    
+    const openaiTime = Date.now() - openaiStartTime;
+    console.log(`[${requestId}] ✅ OpenAI API svaret på ${openaiTime}ms`);
+    
     const data = await res.json();
     const mogensReply = data.reply || "Ingen svar fra Mogens.";
+
+    console.log(`[${requestId}] 💭 Mogens' svar modtaget: "${mogensReply}"`);
 
     // Ekstraher og opdater Mogens' status fra hans svar
     updateMogensStatus(mogensReply);
@@ -233,29 +277,67 @@ async function sendMessage() {
     // Rens svaret og gem det rene svar i dialogen
     const cleanReply = cleanMogensReply(mogensReply);
 
-    // Vent med at stoppe ventelyden - den stopper når Mogens' svar begynder at afspilles
-    // stopWaitingAudio(); // Fjernet - ventelyden stopper nu i speakWithElevenLabsOnPlay
-
-    // Afspil svaret med ElevenLabs og tilføj til dialogen når lyden starter
-    await speakWithElevenLabsOnPlay(cleanReply);
+    // Start parallel processing: ElevenLabs og evaluering samtidigt
+    console.log(`[${requestId}] 🔄 Starter parallel processing...`);
+    
+    const [audioResult, evaluationResult] = await Promise.allSettled([
+      speakWithElevenLabsOnPlay(cleanReply, requestId),
+      evaluateUserMessageInContext(userMessage, cleanReply, dialog, requestId)
+    ]);
+    
+    // Håndter resultater
+    if (audioResult.status === 'fulfilled') {
+      console.log(`[${requestId}] ✅ Lyd generering færdig`);
+    } else {
+      console.error(`[${requestId}] ❌ Lyd generering fejlede:`, audioResult.reason);
+    }
+    
+    if (evaluationResult.status === 'fulfilled' && evaluationResult.value) {
+      console.log(`[${requestId}] ✅ Evaluering færdig`);
+      const lastUserMessage = dialog.findLast(msg => msg.sender === "Dig");
+      if (lastUserMessage) {
+        lastUserMessage.feedback = evaluationResult.value;
+        displayFeedback(evaluationResult.value);
+        updateChatDisplay();
+      }
+    } else {
+      console.error(`[${requestId}] ❌ Evaluering fejlede:`, evaluationResult.reason);
+    }
+    
   } catch (err) {
     // Stop ventelyden ved fejl
     stopWaitingAudio();
     document.getElementById('response').innerText += "\n(Fejl i kommunikation med serveren)";
-    console.log('Fejl ved afspilning af ventelyd:', err);
+    console.error(`[${requestId}] ❌ Fejl ved afspilning af ventelyd:`, err);
   }
 
   // Tøm inputfeltet
   promptInput.value = "";
+  
+  // Beregn og log performance
+  const totalTime = Date.now() - startTime;
+  if (isFirstMessage) {
+    performanceMetrics.firstResponseTime = totalTime;
+    console.log(`[${requestId}] 🎯 FØRSTE SVAR TID: ${totalTime}ms`);
+  }
+  
+  performanceMetrics.responseCount++;
+  performanceMetrics.averageResponseTime = 
+    (performanceMetrics.averageResponseTime * (performanceMetrics.responseCount - 1) + totalTime) / performanceMetrics.responseCount;
+  
+  console.log(`[${requestId}] 📊 Performance: Total tid: ${totalTime}ms, Gennemsnit: ${Math.round(performanceMetrics.averageResponseTime)}ms`);
+  
+  // Opdater performance dashboard
+  updatePerformanceDashboard();
 }
 
 // Funktion: Afspil ElevenLabs-lyd og tilføj Mogens' svar til dialogen når lyden starter
-async function speakWithElevenLabsOnPlay(text) {
+async function speakWithElevenLabsOnPlay(text, requestId) {
   try {
     // Få voice settings baseret på Mogens' nuværende status
     const voiceSettings = getVoiceSettingsForStatus(mogensStatus);
     
-    console.log(`Afspiller Mogens' svar med tonefald for status ${mogensStatus}:`, voiceSettings);
+    console.log(`[${requestId}] 🔊 Starter ElevenLabs lyd generering...`);
 
     const res = await fetch('https://sdcc-tale-rsbot.onrender.com/api/speak', {
       method: 'POST',
@@ -265,6 +347,7 @@ async function speakWithElevenLabsOnPlay(text) {
         voice_settings: voiceSettings
       })
     });
+    
     if (res.ok) {
       const audioBlob = await res.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
@@ -275,23 +358,16 @@ async function speakWithElevenLabsOnPlay(text) {
       // Stop ventelyden med fade-out effekt
       stopWaitingAudioWithFade();
       
-      // Vent 0.3 sekunder før Mogens' svar afspilles
+      // Tilføj Mogens' svar til dialogen med det samme
+      dialog.push({ sender: "Mogens", text: text });
+      console.log(`[${requestId}] ✅ Mogens' svar tilføjet til dialog: "${text}"`);
+      
+      // Opdater chatvisningen for at vise Mogens' svar
+      updateChatDisplay();
+      
+      // Afspil Mogens' svar med minimal forsinkelse
       setTimeout(() => {
         audioPlayer.onplay = function() {
-          dialog.push({ sender: "Mogens", text: text });
-          
-          // Evaluer brugerens sidste besked i relation til Mogens' svar
-          const lastUserMessage = dialog.findLast(msg => msg.sender === "Dig");
-          if (lastUserMessage && !lastUserMessage.feedback) {
-            evaluateUserMessageInContext(lastUserMessage.text, text, dialog).then(evaluation => {
-              if (evaluation) {
-                lastUserMessage.feedback = evaluation;
-                displayFeedback(evaluation);
-                updateChatDisplay();
-              }
-            });
-          }
-          
           // Genaktiver input
           setInputState(true);
           
@@ -309,6 +385,7 @@ async function speakWithElevenLabsOnPlay(text) {
     // Stop ventelyden ved fejl
     stopWaitingAudio();
     document.getElementById('response').innerText += "\n(Fejl i tekst-til-tale)";
+    throw err;
   }
 }
 
@@ -323,7 +400,7 @@ function updateMogensStatus(reply) {
       mogensStatus = newStatus;
       
       // Log status-ændringen
-      console.log(`Mogens' status ændret fra ${oldStatus} til ${newStatus}`);
+      console.log(`🔄 Mogens' status ændret fra ${oldStatus} til ${newStatus}`);
       
       // Opdater h2-elementet med ny status
       const statusText = getStatusDescription(mogensStatus);
@@ -378,11 +455,11 @@ function getStatusDescription(status) {
   return descriptions[status] || "Ukendt status";
 }
 
-
-
 // Funktion: Evaluer brugerens ytring i relation til Mogens' svar
-async function evaluateUserMessageInContext(userMessage, mogensReply, conversationContext) {
+async function evaluateUserMessageInContext(userMessage, mogensReply, conversationContext, requestId) {
   try {
+    console.log(`[${requestId}] 🔍 Starter evaluering...`);
+    
     const res = await fetch('https://sdcc-tale-rsbot.onrender.com/api/evaluate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -395,13 +472,14 @@ async function evaluateUserMessageInContext(userMessage, mogensReply, conversati
     
     if (res.ok) {
       const data = await res.json();
+      console.log(`[${requestId}] ✅ Evaluering modtaget`);
       return data.evaluation;
     } else {
-      console.error('Fejl ved evaluering:', res.status);
+      console.error(`[${requestId}] ❌ Evaluering fejl:`, res.status);
       return null;
     }
   } catch (err) {
-    console.error('Fejl ved evaluering af brugerbesked i kontekst:', err);
+    console.error(`[${requestId}] ❌ Fejl ved evaluering af brugerbesked i kontekst:`, err);
     return null;
   }
 }
@@ -627,4 +705,11 @@ document.addEventListener('DOMContentLoaded', function() {
       startRecording();
     }
   });
+  
+  // Initialiser performance dashboard
+  updatePerformanceDashboard();
+  
+  console.log('🚀 SDCC Talebot initialiseret med performance tracking');
+  console.log('📊 Alle transaktioner logges med ID og timing');
+  console.log('⚡ Optimeret med parallel processing og hurtigere modeller');
 });

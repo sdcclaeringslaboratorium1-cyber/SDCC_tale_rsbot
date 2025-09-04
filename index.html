@@ -14,7 +14,7 @@
     <div class="audio-overlay-content">
       <h3>Skru op for din lyd</h3>
       <button id="startAudioBtn" class="start-audio-btn">Klar</button>
-      <p class="browser-warning">(Chatbot virker ikke i MS Edge browseren)</p>
+      <p class="browser-warning">(Hvis Chatbot ikke virker, skift fra MS Edge browseren)</p>
     </div>
   </div>
 
@@ -33,10 +33,17 @@
   <!-- Main Content -->
   <main class="main">
     <div class="container">
+      <!-- Performance Dashboard - Small and discrete -->
+      <div class="performance-dashboard-mini">
+        <span class="metric-mini">Første: <span id="firstResponseTime">-</span></span>
+        <span class="metric-mini">Gns: <span id="averageResponseTime">-</span></span>
+        <span class="metric-mini">Antal: <span id="responseCount">0</span></span>
+      </div>
+
       <!-- Page Header -->
       <div class="page-header">
         <h2>Patient Simulator: Mogens Mortensen</h2>
-        <p class="subtitle">Øv dig i patientsamtaler med vores interaktive simulator</p>
+        <p class="subtitle">Øv dig i patientsamtaler med den interaktive simulator</p>
       </div>
 
       <!-- Layout Container for Chat og Advice -->
@@ -45,7 +52,7 @@
         <div class="chat-container">
           <div class="chat-header">
             <h4>Chat med Mogens</h4>
-            <p>Mogens er 77 og har haft diabetes i 20 år. <br/></p><h4></h4><b>Din opgave er at tale med Mogens om at måle sit blodsukker hver dag morgen og aften med henblik på muligvis at starte på insulinbehandling </b></h4>
+            <p>Mogens er 64 og har haft diabetes i 10 år. <br/></p><h4></h4><b>Din opgave er at tale med Mogens om at måle sit blodsukker hver dag morgen og aften med henblik på muligvis at starte på insulinbehandling </b></h4>
           
             <div class="mogens-profile">
               <div class="mogens-image">

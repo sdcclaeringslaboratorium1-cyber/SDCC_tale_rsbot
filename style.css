@@ -69,6 +69,28 @@ body {
   padding: 3rem 0;
 }
 
+/* Performance Dashboard Mini - Small and discrete */
+.performance-dashboard-mini {
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.metric-mini {
+  margin: 0 1rem;
+  font-weight: 500;
+}
+
+.metric-mini span {
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
 .page-header {
   text-align: center;
   margin-bottom: 3rem;
@@ -377,7 +399,7 @@ body {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   border: 1px solid #e2e8f0;
   position: sticky;
-  top: 2rem;
+  top: 1.9rem;
   height: fit-content;
 }
 
@@ -423,7 +445,7 @@ body {
 
 /* Feedback Box */
 .feedback-box {
-  //background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  /* background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); */
   border-radius: 12px;
   padding: 1.5rem;
   border: 1px solid #e2e8f0;
@@ -476,8 +498,9 @@ body {
   color: white;
 }
 
-.score-excellent { background: #10b981; }
-.score-good { background: #f59e0b; }
+.score-excellent { background: #059669; }
+.score-good { background: #10b981; }
+.score-average { background: #f59e0b; }
 .score-poor { background: #ef4444; }
 
 .feedback-details {
@@ -671,6 +694,14 @@ body {
   
   .container {
     padding: 0 15px;
+  }
+  
+  .performance-dashboard-mini {
+    font-size: 0.7rem;
+  }
+  
+  .metric-mini {
+    margin: 0 0.5rem;
   }
 }
 
