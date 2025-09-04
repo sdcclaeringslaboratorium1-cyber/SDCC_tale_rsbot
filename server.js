@@ -28,8 +28,8 @@ async function loadConfig() {
   }
   
   try {
-    // Hent konfiguration fra GitHub (hvor resten af koden også ligger)
-    const response = await axios.get('https://raw.githubusercontent.com/sdcclaeringslaboratorium1-cyber/SDCC_tale_rsbot/main/config.json');
+    // Hent konfiguration fra GitHub raw URL (hvor resten af koden også ligger)
+    const response = await axios.get('https://raw.githubusercontent.com/sdcclaeringslaboratorium1-cyber/SDCC_tale_rsbot/refs/heads/main/config.json');
     config = response.data;
     console.log('✅ Konfiguration indlæst fra GitHub');
   } catch (error) {
