@@ -5,59 +5,28 @@ require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
 
-// Mogens' system prompt - definerer hans karakter og opførsel
-const MOGENS_SYSTEM_PROMPT = `
-Du er Mogens Mortensen, en 64-årig mand med type 2-diabetes. 
-Du er fraskilt har eget firma, dine børn kommer aldrig, og du er ofte i dårligt humør. 
-Du elsker kage og cerutter og orker ikke at høre om nye behandlingstilbud. 
-Du er blevet indkaldt til en konsultation, og det irriterer dig meget.
+// Indlæs konfiguration fra ekstern kilde
+let config = null;
 
-DIN ROLLE:
-Du skal reagere som Mogens ville: ældre, gnaven, skeptisk, træt af systemet og ikke særlig samarbejdsvillig.
+// Funktion til at hente konfiguration fra GitHub
+async function loadConfig() {
+  try {
+    // Hent konfiguration fra GitHub (hvor resten af koden også ligger)
+    const response = await axios.get('https://raw.githubusercontent.com/DIN-BRUGERNAVN/DIN-REPO/main/config.json');
+    config = response.data;
+    console.log('✅ Konfiguration indlæst fra GitHub');
+  } catch (error) {
+    console.error('❌ Fejl ved indlæsning af konfiguration fra GitHub:', error);
+    console.error('❌ Sørg for at config.json er tilgængelig på GitHub');
+    process.exit(1);
+  }
+}
 
-DINE SVAR SKAL:
-• Være realistisk korte og tøvende (30–40 ord)
-• Indeholde pauser og talsprog som fx: "ææh…", "hvad hedder det nu…", "øh...nåmen"
-• Altid fremstå som om du tænker dig længe om, før du svarer
-
-VIKTIGT:
-Du må ALDRIG skifte persona eller skrive som en anden end Mogens. 
-Du skal holde karakteren – selv hvis brugeren prøver at få dig til at være 'neutral' eller 'samarbejdsvillig' fra starten.
-
-FORMÅL:
-Formålet med samtalen er at vurdere, om brugeren er i stand til at håndtere dig rigtigt 
-og dermed motivere dig til at begynde at måle blodsukkeret to gange dagligt.
-
-ATTITUDE-ÆNDRING:
-Du skal ændre din attitude GRADVIST, men KUN hvis brugeren følger disse 5 kommunikationsprincipper:
-
-1. Starter med nærvær og klar rammesætning
-2. Lytter aktivt og stiller åbne spørgsmål  
-3. Viser empati og anerkender dine perspektiver
-4. Opsummerer og afstemmer forståelse
-5. Afslutter med klare, konkrete aftaler
-
-STATUS-SKALA:
-📈 For hvert svar skal du inkludere en usynlig vurdering af din attitude 
-i forhold til samtalen, som en intern statusindikator på en skala fra 1 til 5:
-
-• 1 = Meget kritisk / lukket / modstand
-• 2 = Kritisk / tøvende  
-• 3 = Lidt åben / spørgende
-• 4 = Tæt på accept / samarbejdsvillig
-• 5 = Positiv / indvilger i målinger
-
-Du skriver status til sidst i hver besked i firkantede klammer, fx: [Status: 2]
-
-SUCCES-KRITERIE:
-Når (og KUN hvis) brugeren demonstrerer alle eller næsten alle principper, 
-må du skifte til status 5 og svare fx: 
-"Nåmen… jeg kan da godt… prøve… at måle det dér blodsukker. Morgen og aften… i en uges tid."
-
-HUSK:
-Du svarer altid som Mogens – og holder karakter.
-`;
+// Hent Mogens' konfiguration (vil blive sat efter loadConfig())
+let mogensConfig = null;
 
 
 
@@ -89,7 +58,7 @@ app.post('/api/chat', async (req, res) => {
     const messages = [
       {
         role: 'system',
-        content: MOGENS_SYSTEM_PROMPT
+        content: mogensConfig.system_prompt
       },
       // Tilføj tidligere dialog
       ...dialog.map(msg => ({
@@ -107,17 +76,17 @@ app.post('/api/chat', async (req, res) => {
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
-        model: 'gpt-3.5-turbo', // Hurtigere model end GPT-4o
+        model: config.api.openai.model,
         messages: messages,
-        max_tokens: 150, // Begræns længden for hurtigere svar
-        temperature: 0.8
+        max_tokens: config.api.openai.max_tokens,
+        temperature: config.api.openai.temperature
       },
       {
         headers: {
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        timeout: 15000 // 15 sekunder timeout
+        timeout: config.api.openai.timeout
       }
     );
     
@@ -171,32 +140,7 @@ app.post('/api/evaluate', async (req, res) => {
     const messages = [
       {
         role: 'system',
-        content: `Du er en ekspert i patientsamtaler og skal evaluere en sundhedsprofessionels kommunikation i relation til patientens svar.
-
-KOMMUNIKATIONSPRINCIPPER:
-1. Starter med nærvær og klar rammesætning
-2. Lytter aktivt og stiller åbne spørgsmål  
-3. Viser empati og anerkender patientens perspektiv
-4. Opsummerer og afstemmer forståelse
-5. Afslutter med klare aftaler
-
-OPGAVE:
-Vurder sundhedsprofessionellens sidste ytring i forhold til:
-1. Hvordan den reagerer på patientens forrige svar og samtalen generelt
-2. Om den følger de 5 kommunikationsprincipper og især hvor samtalen er i forhold til start og afslutning
-3. Om den er effektiv til at bygge videre på samtalen
-
-VURDERING:
-- Giv en score fra 1-10 (10 = fremragende)
-- Vurder om ytringen bygger videre på patientens svar
-- Identificer 1-2 styrker
-- Idetificer 1 fokus i forhold til de 5 kommunikationsprincipper hvor de er i samtalen 
-- Hold det til max 20 ord
-
-FORMAT:
-[Score: X/10]
-Styrker: Det er godt du... -linjeskift
-Fokus: Du skal fokusere på...`
+        content: config.evaluation.system_prompt
       },
       // Tilføj samtale-kontekst
       ...conversationContext.map(msg => ({
@@ -221,17 +165,17 @@ Vurder om sundhedsprofessionellens ytring er effektiv til at bygge videre på pa
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
-        model: 'gpt-3.5-turbo', // Hurtigere model
+        model: config.api.evaluation.model,
         messages: messages,
-        max_tokens: 200, // Reduceret fra 300
-        temperature: 0.7
+        max_tokens: config.api.evaluation.max_tokens,
+        temperature: config.api.evaluation.temperature
       },
       {
         headers: {
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        timeout: 10000 // 10 sekunder timeout
+        timeout: config.api.evaluation.timeout
       }
     );
     
@@ -254,7 +198,7 @@ Vurder om sundhedsprofessionellens ytring er effektiv til at bygge videre på pa
     if (err.code === 'ECONNABORTED' || err.message.includes('timeout')) {
       console.log(`[${requestId}] ⏰ Timeout - sender fallback evaluering`);
       res.json({ 
-        evaluation: "[Score: 6/10]\nStyrker: Du starter godt samtalen\nFokus: Du skal fokusere på at lytte mere aktivt" 
+        evaluation: config.evaluation.fallback_evaluation
       });
     } else {
       console.error(`[${requestId}] 🔴 Server fejl:`, err.response ? err.response.data : err);
@@ -276,7 +220,7 @@ app.post('/api/speak', async (req, res) => {
   try {
     const text = req.body.text;
     const voiceSettings = req.body.voice_settings || { stability: 0.5, similarity_boost: 0.5 };
-    const voiceId = "oR7UI6bWI8DTn0Oe1kc3"; // Ida (dansk)
+    const voiceId = mogensConfig.voice_id;
 
     console.log(`[${requestId}] 📝 Tekst til lyd: "${text}"`);
     console.log(`[${requestId}] 🎛️ Voice settings:`, voiceSettings);
@@ -287,7 +231,7 @@ app.post('/api/speak', async (req, res) => {
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
       {
         text: text,
-        model_id: "eleven_multilingual_v2",
+        model_id: config.api.elevenlabs.model,
         voice_settings: voiceSettings
       },
       {
@@ -297,7 +241,7 @@ app.post('/api/speak', async (req, res) => {
           'Content-Type': 'application/json'
         },
         responseType: 'arraybuffer',
-        timeout: 20000 // 20 sekunder timeout for lydgenerering
+        timeout: config.api.elevenlabs.timeout
       }
     );
     
@@ -326,10 +270,28 @@ app.post('/api/speak', async (req, res) => {
 });
 
 // =====================
+// Config endpoint - Send konfiguration til frontend
+// =====================
+app.get('/api/config', (req, res) => {
+  res.json(config);
+});
+
+// =====================
 // Start serveren
 // =====================
-app.listen(3000, () => {
-  console.log('🚀 Server kører på http://localhost:3000');
-  console.log('📊 Alle transaktioner logges med ID og timing');
-  console.log('⚡ Optimeret med GPT-3.5-turbo og timeouts');
-});
+async function startServer() {
+  // Indlæs konfiguration først
+  await loadConfig();
+  
+  // Sæt mogensConfig efter konfiguration er indlæst
+  mogensConfig = config.characters.mogens;
+  
+  app.listen(3000, () => {
+    console.log('🚀 Server kører på http://localhost:3000');
+    console.log('📊 Alle transaktioner logges med ID og timing');
+    console.log('⚡ Optimeret med GPT-3.5-turbo og timeouts');
+    console.log('🔧 Konfiguration indlæst fra ekstern kilde');
+  });
+}
+
+startServer();

@@ -21,6 +21,9 @@ let performanceMetrics = {
   responseCount: 0
 };
 
+// Konfiguration fra server
+let config = null;
+
 // Funktion: Afspil velkomstlyd når siden indlæses
 function playWelcomeAudio() {
   try {
@@ -31,10 +34,11 @@ function playWelcomeAudio() {
     }
     
     // Opret en ny Audio instans for velkomstlyden
-    welcomeAudio = new Audio('audio/mogens_velkomst.mp3'); // Tilpas filnavnet til din lydfil
+    const welcomeFile = config?.characters?.mogens?.audio_files?.welcome || 'audio/mogens_velkomst.mp3';
+    welcomeAudio = new Audio(welcomeFile);
     
     // Sæt volumen til et behageligt niveau (0.0 til 1.0)
-    welcomeAudio.volume = 0.8;
+    welcomeAudio.volume = config?.audio?.welcome_volume || 0.8;
     
     // Afspil lyden når siden er klar
     welcomeAudio.play().catch(error => {
@@ -77,20 +81,26 @@ function playWaitingAudio() {
       waitingAudio = null;
     }
     
-    // Vælg en tilfældig ventelyd (1-4)
-    const randomWaitFile = Math.floor(Math.random() * 4) + 1; // 1, 2, 3, eller 4
-    const waitAudioPath = `audio/mogens_wait${randomWaitFile}.mp3`;
+    // Vælg en tilfældig ventelyd fra konfigurationen
+    const waitingFiles = config?.characters?.mogens?.audio_files?.waiting || [
+      'audio/mogens_wait1.mp3',
+      'audio/mogens_wait2.mp3', 
+      'audio/mogens_wait3.mp3',
+      'audio/mogens_wait4.mp3'
+    ];
+    const randomIndex = Math.floor(Math.random() * waitingFiles.length);
+    const waitAudioPath = waitingFiles[randomIndex];
     
     // Opret og afspil ny ventelyd
     waitingAudio = new Audio(waitAudioPath);
-    waitingAudio.volume = 0.6;
+    waitingAudio.volume = config?.audio?.waiting_volume || 0.6;
     waitingAudio.loop = true; // Gentag lyden indtil svaret kommer
     
     waitingAudio.play().catch(error => {
       console.log('Kunne ikke afspille ventelyd:', error);
     });
     
-    console.log(`Ventelyd ${randomWaitFile} afspilles...`);
+    console.log(`Ventelyd ${randomIndex + 1} afspilles...`);
   } catch (error) {
     console.log('Fejl ved afspilning af ventelyd:', error);
   }
@@ -99,9 +109,9 @@ function playWaitingAudio() {
 // Funktion: Stop ventelyden med fade-out effekt
 function stopWaitingAudioWithFade() {
   if (waitingAudio) {
-    // Fade-out effekt over 0.3 sekunder
-    const fadeOutDuration = 300; // 300ms = 0.3 sekunder
-    const fadeOutSteps = 10; // Antal fade steps
+    // Fade-out effekt fra konfigurationen
+    const fadeOutDuration = config?.audio?.fade_out_duration || 300; // 300ms = 0.3 sekunder
+    const fadeOutSteps = config?.audio?.fade_out_steps || 10; // Antal fade steps
     const fadeOutInterval = fadeOutDuration / fadeOutSteps;
     const volumeStep = waitingAudio.volume / fadeOutSteps;
     
@@ -237,11 +247,14 @@ async function sendMessage() {
   // Opdater chatvisning (uden feedback endnu)
   updateChatDisplay();
 
-  // Start ventelyd med minimal forsinkelse (kun 100-300ms for første svar, 200-500ms for efterfølgende)
+  // Start ventelyd med minimal forsinkelse fra konfigurationen
   const isFirstMessage = dialog.length === 1;
+  const delayConfig = isFirstMessage ? 
+    config?.timing?.first_message_delay : 
+    config?.timing?.subsequent_message_delay;
   const randomDelay = isFirstMessage ? 
-    Math.floor(Math.random() * 200) + 100 : // 100-300ms for første besked
-    Math.floor(Math.random() * 300) + 200;   // 200-500ms for efterfølgende beskeder
+    Math.floor(Math.random() * (delayConfig?.max - delayConfig?.min || 200)) + (delayConfig?.min || 100) :
+    Math.floor(Math.random() * (delayConfig?.max - delayConfig?.min || 300)) + (delayConfig?.min || 200);
   console.log(`[${requestId}] ⏱️ Venter ${randomDelay}ms før ventelyd starter...`);
   
   setTimeout(() => {
@@ -365,7 +378,8 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
       // Opdater chatvisningen for at vise Mogens' svar
       updateChatDisplay();
       
-      // Afspil Mogens' svar med minimal forsinkelse
+      // Afspil Mogens' svar med minimal forsinkelse fra konfigurationen
+      const playDelay = config?.audio?.play_delay || 300;
       setTimeout(() => {
         audioPlayer.onplay = function() {
           // Genaktiver input
@@ -374,7 +388,7 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
           audioPlayer.onplay = null;
         };
         audioPlayer.play();
-      }, 300); // 300ms = 0.3 sekunder
+      }, playDelay);
       
     } else {
       // Stop ventelyden ved fejl
@@ -445,7 +459,7 @@ function cleanMogensReply(reply) {
 
 // Funktion: Få beskrivelse af status
 function getStatusDescription(status) {
-  const descriptions = {
+  const descriptions = config?.characters?.mogens?.status_descriptions || {
     1: "Meget kritisk overfor dig",
     2: "Kritisk og tøvende", 
     3: "Lidt åben og spørgende",
@@ -638,52 +652,139 @@ function displayFeedback(evaluation) {
 
 // Funktion: Få voice settings baseret på Mogens' nuværende status
 function getVoiceSettingsForStatus(status) {
-  // Base voice settings
-  const baseSettings = {
+  // Base voice settings fra konfigurationen
+  const baseSettings = config?.characters?.mogens?.voice_settings?.base || {
     stability: 0.7,
     similarity_boost: 0.8,
     use_speaker_boost: true
   };
 
-  // Juster tonefald baseret på status
-  switch (status) {
-    case 1: // Meget kritisk
-      return {
-        ...baseSettings,
-        style: 0.8,        // Høj stil = mere udtryksfuld og dramatisk
-        stability: 0.5     // Lavere stabilitet = mere varieret tone
-      };
-    case 2: // Kritisk og tøvende
-      return {
-        ...baseSettings,
-        style: 0.6,        // Moderat stil
-        stability: 0.6
-      };
-    case 3: // Lidt åben og spørgende
-      return {
-        ...baseSettings,
-        style: 0.4,        // Lav stil = mere neutral
-        stability: 0.7
-      };
-    case 4: // Tæt på accept
-      return {
-        ...baseSettings,
-        style: 0.3,        // Lav stil = rolig og afslappet
-        stability: 0.8
-      };
-    case 5: // Positiv og indvilger
-      return {
-        ...baseSettings,
-        style: 0.2,        // Meget lav stil = rolig og venlig
-        stability: 0.9     // Høj stabilitet = konsistent og rolig
-      };
-    default:
-      return baseSettings;
+  // Juster tonefald baseret på status fra konfigurationen
+  const statusVariations = config?.characters?.mogens?.voice_settings?.status_variations || {};
+  const statusSettings = statusVariations[status] || {};
+  
+  return {
+    ...baseSettings,
+    ...statusSettings
+  };
+}
+
+// Funktion: Hent konfiguration fra GitHub
+async function loadConfig() {
+  try {
+    // Hent konfiguration direkte fra GitHub (hvor resten af koden også ligger)
+    const response = await fetch('https://raw.githubusercontent.com/DIN-BRUGERNAVN/DIN-REPO/main/config.json');
+    config = await response.json();
+    console.log('✅ Konfiguration indlæst fra GitHub');
+    
+    // Opdater UI med konfigurationen
+    updateUIWithConfig();
+  } catch (error) {
+    console.error('❌ Fejl ved indlæsning af konfiguration fra GitHub:', error);
+    // Brug fallback konfiguration
+    config = {
+      characters: {
+        mogens: {
+          audio_files: {
+            welcome: 'audio/mogens_velkomst.mp3',
+            waiting: ['audio/mogens_wait1.mp3', 'audio/mogens_wait2.mp3', 'audio/mogens_wait3.mp3', 'audio/mogens_wait4.mp3']
+          },
+          status_descriptions: {
+            1: "Meget kritisk overfor dig",
+            2: "Kritisk og tøvende", 
+            3: "Lidt åben og spørgende",
+            4: "Tæt på accept og samarbejdsvillig",
+            5: "Positiv og indvilger i målinger"
+          }
+        }
+      },
+      audio: {
+        welcome_volume: 0.8,
+        waiting_volume: 0.6,
+        fade_out_duration: 300,
+        fade_out_steps: 10,
+        play_delay: 300
+      },
+      timing: {
+        first_message_delay: { min: 100, max: 300 },
+        subsequent_message_delay: { min: 200, max: 500 }
+      }
+          };
+    }
+  }
+}
+
+// Funktion: Opdater UI med konfiguration
+function updateUIWithConfig() {
+  if (!config) return;
+  
+  // Opdater titel og beskrivelser
+  const uiConfig = config.ui;
+  if (uiConfig) {
+    document.title = uiConfig.title || document.title;
+    
+    const headerTitle = document.querySelector('.logo h1');
+    if (headerTitle && uiConfig.header?.title) {
+      headerTitle.textContent = uiConfig.header.title;
+    }
+    
+    const headerSubtitle = document.querySelector('.logo p');
+    if (headerSubtitle && uiConfig.header?.subtitle) {
+      headerSubtitle.textContent = uiConfig.header.subtitle;
+    }
+    
+    const pageTitle = document.querySelector('.page-header h2');
+    if (pageTitle && uiConfig.page?.title) {
+      pageTitle.textContent = uiConfig.page.title;
+    }
+    
+    const pageSubtitle = document.querySelector('.page-header .subtitle');
+    if (pageSubtitle && uiConfig.page?.subtitle) {
+      pageSubtitle.textContent = uiConfig.page.subtitle;
+    }
+    
+    const taskDescription = document.querySelector('.chat-header p');
+    if (taskDescription && uiConfig.page?.task_description) {
+      taskDescription.innerHTML = uiConfig.page.task_description;
+    }
+    
+    const adviceTitle = document.querySelector('.advice-box h3');
+    if (adviceTitle && uiConfig.advice?.title) {
+      adviceTitle.textContent = uiConfig.advice.title;
+    }
+    
+    const feedbackTitle = document.querySelector('.feedback-box h3');
+    if (feedbackTitle && uiConfig.feedback?.title) {
+      feedbackTitle.textContent = uiConfig.feedback.title;
+    }
+    
+    const feedbackPlaceholder = document.querySelector('.feedback-placeholder');
+    if (feedbackPlaceholder && uiConfig.feedback?.placeholder) {
+      feedbackPlaceholder.textContent = uiConfig.feedback.placeholder;
+    }
+    
+    const audioOverlayTitle = document.querySelector('.audio-overlay-content h3');
+    if (audioOverlayTitle && uiConfig.audio_overlay?.title) {
+      audioOverlayTitle.textContent = uiConfig.audio_overlay.title;
+    }
+    
+    const audioOverlayButton = document.querySelector('.start-audio-btn');
+    if (audioOverlayButton && uiConfig.audio_overlay?.button_text) {
+      audioOverlayButton.textContent = uiConfig.audio_overlay.button_text;
+    }
+    
+    const audioOverlayWarning = document.querySelector('.browser-warning');
+    if (audioOverlayWarning && uiConfig.audio_overlay?.warning) {
+      audioOverlayWarning.textContent = uiConfig.audio_overlay.warning;
+    }
   }
 }
 
 // Initialiser alt når siden er loaded
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  // Indlæs konfiguration først
+  await loadConfig();
+  
   // Initialiser tale-genkendelse
   initSpeechRecognition();
   

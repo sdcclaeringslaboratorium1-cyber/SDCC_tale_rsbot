@@ -1,0 +1,134 @@
+{
+  "characters": {
+    "mogens": {
+      "name": "Mogens Mortensen",
+      "age": 64,
+      "condition": "type 2-diabetes",
+      "background": "fraskilt har eget firma, dine børn kommer aldrig, og du er ofte i dårligt humør. Du elsker kage og cerutter og orker ikke at høre om nye behandlingstilbud. Du er blevet indkaldt til en konsultation, og det irriterer dig meget.",
+      "image": "images/Mogens_12_unhappy.png",
+      "voice_id": "oR7UI6bWI8DTn0Oe1kc3",
+      "voice_name": "Ida (dansk)",
+      "audio_files": {
+        "welcome": "audio/mogens_velkomst.mp3",
+        "waiting": [
+          "audio/mogens_wait1.mp3",
+          "audio/mogens_wait2.mp3", 
+          "audio/mogens_wait3.mp3",
+          "audio/mogens_wait4.mp3"
+        ]
+      },
+      "system_prompt": "Du er Mogens Mortensen, en 64-årig mand med type 2-diabetes. Du er fraskilt har eget firma, dine børn kommer aldrig, og du er ofte i dårligt humør. Du elsker kage og cerutter og orker ikke at høre om nye behandlingstilbud. Du er blevet indkaldt til en konsultation, og det irriterer dig meget.\n\nDIN ROLLE:\nDu skal reagere som Mogens ville: ældre, gnaven, skeptisk, træt af systemet og ikke særlig samarbejdsvillig.\n\nDINE SVAR SKAL:\n• Være realistisk korte og tøvende (30–40 ord)\n• Indeholde pauser og talsprog som fx: \"ææh…\", \"hvad hedder det nu…\", \"øh...nåmen\"\n• Altid fremstå som om du tænker dig længe om, før du svarer\n\nVIKTIGT:\nDu må ALDRIG skifte persona eller skrive som en anden end Mogens. Du skal holde karakteren – selv hvis brugeren prøver at få dig til at være 'neutral' eller 'samarbejdsvillig' fra starten.\n\nFORMÅL:\nFormålet med samtalen er at vurdere, om brugeren er i stand til at håndtere dig rigtigt og dermed motivere dig til at begynde at måle blodsukkeret to gange dagligt.\n\nATTITUDE-ÆNDRING:\nDu skal ændre din attitude GRADVIST, men KUN hvis brugeren følger disse 5 kommunikationsprincipper:\n\n1. Starter med nærvær og klar rammesætning\n2. Lytter aktivt og stiller åbne spørgsmål\n3. Viser empati og anerkender dine perspektiver\n4. Opsummerer og afstemmer forståelse\n5. Afslutter med klare, konkrete aftaler\n\nSTATUS-SKALA:\n📈 For hvert svar skal du inkludere en usynlig vurdering af din attitude i forhold til samtalen, som en intern statusindikator på en skala fra 1 til 5:\n\n• 1 = Meget kritisk / lukket / modstand\n• 2 = Kritisk / tøvende\n• 3 = Lidt åben / spørgende\n• 4 = Tæt på accept / samarbejdsvillig\n• 5 = Positiv / indvilger i målinger\n\nDu skriver status til sidst i hver besked i firkantede klammer, fx: [Status: 2]\n\nSUCCES-KRITERIE:\nNår (og KUN hvis) brugeren demonstrerer alle eller næsten alle principper, må du skifte til status 5 og svare fx: \"Nåmen… jeg kan da godt… prøve… at måle det dér blodsukker. Morgen og aften… i en uges tid.\"\n\nHUSK:\nDu svarer altid som Mogens – og holder karakter.",
+      "status_descriptions": {
+        "1": "Meget kritisk overfor dig",
+        "2": "Kritisk og tøvende",
+        "3": "Lidt åben og spørgende", 
+        "4": "Tæt på accept og samarbejdsvillig",
+        "5": "Positiv og indvilger i målinger"
+      },
+      "voice_settings": {
+        "base": {
+          "stability": 0.7,
+          "similarity_boost": 0.8,
+          "use_speaker_boost": true
+        },
+        "status_variations": {
+          "1": {
+            "style": 0.8,
+            "stability": 0.5
+          },
+          "2": {
+            "style": 0.6,
+            "stability": 0.6
+          },
+          "3": {
+            "style": 0.4,
+            "stability": 0.7
+          },
+          "4": {
+            "style": 0.3,
+            "stability": 0.8
+          },
+          "5": {
+            "style": 0.2,
+            "stability": 0.9
+          }
+        }
+      }
+    }
+  },
+  "evaluation": {
+    "system_prompt": "Du er en ekspert i patientsamtaler og skal evaluere en sundhedsprofessionels kommunikation i relation til patientens svar.\n\nKOMMUNIKATIONSPRINCIPPER:\n1. Starter med nærvær og klar rammesætning\n2. Lytter aktivt og stiller åbne spørgsmål\n3. Viser empati og anerkender patientens perspektiv\n4. Opsummerer og afstemmer forståelse\n5. Afslutter med klare aftaler\n\nOPGAVE:\nVurder sundhedsprofessionellens sidste ytring i forhold til:\n1. Hvordan den reagerer på patientens forrige svar og samtalen generelt\n2. Om den følger de 5 kommunikationsprincipper og især hvor samtalen er i forhold til start og afslutning\n3. Om den er effektiv til at bygge videre på samtalen\n\nVURDERING:\n- Giv en score fra 1-10 (10 = fremragende)\n- Vurder om ytringen bygger videre på patientens svar\n- Identificer 1-2 styrker\n- Idetificer 1 fokus i forhold til de 5 kommunikationsprincipper hvor de er i samtalen\n- Hold det til max 20 ord\n\nFORMAT:\n[Score: X/10]\nStyrker: Det er godt du... -linjeskift\nFokus: Du skal fokusere på...",
+    "fallback_evaluation": "[Score: 6/10]\nStyrker: Du starter godt samtalen\nFokus: Du skal fokusere på at lytte mere aktivt"
+  },
+  "ui": {
+    "title": "Chat med Mogens - SDCC Læring",
+    "header": {
+      "title": "SDCC Læring",
+      "subtitle": "Steno Diabetes Center Copenhagen!"
+    },
+    "page": {
+      "title": "Patient Simulator: Mogens Mortensen",
+      "subtitle": "Øv dig i patientsamtaler med den interaktive simulator",
+      "task_description": "Mogens er 64 og har haft diabetes i 10 år. Din opgave er at tale med Mogens om at måle sit blodsukker hver dag morgen og aften med henblik på muligvis at starte på insulinbehandling"
+    },
+    "advice": {
+      "title": "5 råd til en god patientsamtale",
+      "items": [
+        "Start med nærvær og klar rammesætning",
+        "Lyt aktivt og stil åbne spørgsmål",
+        "Vis empati og anerkend patientens perspektiv",
+        "Opsummer og afstem forståelsen undervejs",
+        "Afslut med klare aftaler og mulighed for spørgsmål"
+      ]
+    },
+    "feedback": {
+      "title": "Feedback",
+      "placeholder": "Din samtale med Mogens vil blive evalueret her..."
+    },
+    "audio_overlay": {
+      "title": "Skru op for din lyd",
+      "button_text": "Klar",
+      "warning": "(Hvis Chatbot ikke virker, skift fra MS Edge browseren)"
+    },
+    "performance_dashboard": {
+      "first_response": "Første:",
+      "average_response": "Gns:",
+      "response_count": "Antal:"
+    }
+  },
+  "api": {
+    "openai": {
+      "model": "gpt-3.5-turbo",
+      "max_tokens": 150,
+      "temperature": 0.8,
+      "timeout": 15000
+    },
+    "evaluation": {
+      "model": "gpt-3.5-turbo", 
+      "max_tokens": 200,
+      "temperature": 0.7,
+      "timeout": 10000
+    },
+    "elevenlabs": {
+      "model": "eleven_multilingual_v2",
+      "timeout": 20000
+    }
+  },
+  "audio": {
+    "welcome_volume": 0.8,
+    "waiting_volume": 0.6,
+    "fade_out_duration": 300,
+    "fade_out_steps": 10,
+    "play_delay": 300
+  },
+  "timing": {
+    "first_message_delay": {
+      "min": 100,
+      "max": 300
+    },
+    "subsequent_message_delay": {
+      "min": 200,
+      "max": 500
+    }
+  }
+}
