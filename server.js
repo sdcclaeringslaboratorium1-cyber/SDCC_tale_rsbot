@@ -29,7 +29,7 @@ async function loadConfig() {
   
   try {
     // Hent konfiguration fra GitHub (hvor resten af koden også ligger)
-    const response = await axios.get('https://raw.githubusercontent.com/DIN-BRUGERNAVN/DIN-REPO/main/config.json');
+    const response = await axios.get('https://raw.githubusercontent.com/sdcclaeringslaboratorium1-cyber/SDCC_tale_rsbot/main/config.json');
     config = response.data;
     console.log('✅ Konfiguration indlæst fra GitHub');
   } catch (error) {
