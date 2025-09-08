@@ -24,6 +24,7 @@ let performanceMetrics = {
 // Konfiguration fra server
 let config = null;
 let patientConfig = null; // Reference til aktiv patient fra config
+let completionShown = false; // Popup vises kun én gang ved 5/5
 
 // Funktion: Afspil velkomstlyd når siden indlæses
 function playWelcomeAudio() {
@@ -359,7 +360,7 @@ async function sendMessage() {
           } else {
             // Score > 8: status må maksimalt være 2
             const capped = newStatus == null ? 2 : Math.min(newStatus, 2);
-            console.log(`🔧 Første ytring: score ${firstScore} > 8 → cap status fra ${newStatus} til ${capped}`);
+            console.log(`🔧 Første ytring: score ${firstScore} > 7 → cap status fra ${newStatus} til ${capped}`);
             newStatus = capped;
           }
         }
@@ -431,8 +432,9 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
       stopWaitingAudioWithFade();
       
       // Tilføj patientens svar til dialogen med det samme
-      dialog.push({ sender: (patientConfig && patientConfig.name) || "Patient", text: text });
-      console.log(`[${requestId}] ✅ Svar fra ${(patientConfig && patientConfig.name) || 'Patient'} tilføjet til dialog: "${text}"`);
+      const patientName = (patientConfig && patientConfig.name) || "Patient";
+      dialog.push({ sender: patientName, text: text });
+      console.log(`[${requestId}] ✅ Svar fra ${patientName} tilføjet til dialog: "${text}"`);
       
       // Opdater chatvisningen for at vise Mogens' svar
       updateChatDisplay();
@@ -448,6 +450,9 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
         };
         audioPlayer.play();
       }, playDelay);
+
+      // Tjek om patienten afslutter samtalen
+      checkForEndConversation(text, patientName);
       
     } else {
       // Stop ventelyden ved fejl
@@ -474,8 +479,8 @@ function updateMogensStatusFromEvaluation(newStatus, newAttitude = null) {
     console.log(`🔄 Patientens status ændret fra ${oldStatus} til ${newStatus} (fra evaluation)`);
     console.log(`📊 Patientens nuværende status: ${mogensStatus}/5`);
     
-    // Opdater h2-elementet med ny status - brug dynamisk attitude-tekst hvis tilgængelig
-    const statusText = newAttitude || getStatusDescription(mogensStatus);
+    // Opdater h2-elementet med ny status - brug altid beskrivelsen, så attitude matcher status
+    const statusText = getStatusDescription(mogensStatus);
     const mogensStatusElement = document.getElementById('mogensStatus');
     
     console.log(`🔍 Søger efter mogensStatus element:`, mogensStatusElement);
@@ -496,6 +501,11 @@ function updateMogensStatusFromEvaluation(newStatus, newAttitude = null) {
       const percentage = (mogensStatus / 5) * 100;
       statusFill.style.width = percentage + '%';
       console.log(`✅ Status bar opdateret til ${percentage}%`);
+      // Popup ved 5/5 (kun én gang)
+      if (mogensStatus === 5 && !completionShown) {
+        completionShown = true;
+        showCompletionPopup();
+      }
     } else {
       console.error('❌ statusFill element ikke fundet');
     }
@@ -522,6 +532,133 @@ function updateStatusBarColor(status) {
   } else {
     statusFill.style.background = 'linear-gradient(90deg, #10b981 0%, #059669 100%)'; // Grøn gradient
   }
+}
+
+// Simpel popup ved fuldført (5/5)
+function showCompletionPopup() {
+  const uiCfg = (config && config.ui && config.ui.completion_popup) || {};
+  const title = uiCfg.title || 'Godt klaret!';
+  const message = uiCfg.message || "Godt klaret, du lykkedes med at have en god patientsamtale!";
+
+  // Opret overlay
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.background = 'rgba(0,0,0,0.4)';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.zIndex = '9999';
+
+  // Opret modal boks
+  const modal = document.createElement('div');
+  modal.style.background = '#ffffff';
+  modal.style.borderRadius = '12px';
+  modal.style.padding = '24px';
+  modal.style.width = 'min(520px, 90vw)';
+  modal.style.boxShadow = '0 10px 25px rgba(0,0,0,0.15)';
+  modal.style.fontFamily = 'Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+
+  const h3 = document.createElement('h3');
+  h3.textContent = title;
+  h3.style.margin = '0 0 12px 0';
+  h3.style.fontSize = '1.25rem';
+  h3.style.fontWeight = '600';
+
+  const body = document.createElement('div');
+  body.innerHTML = message;
+  body.style.color = '#374151';
+  body.style.lineHeight = '1.5';
+  body.style.marginBottom = '16px';
+
+  const btn = document.createElement('button');
+  btn.textContent = 'OK';
+  btn.style.background = '#0ea5e9';
+  btn.style.color = '#fff';
+  btn.style.border = 'none';
+  btn.style.borderRadius = '8px';
+  btn.style.padding = '10px 16px';
+  btn.style.cursor = 'pointer';
+  btn.style.fontWeight = '600';
+
+  btn.addEventListener('click', () => {
+    document.body.removeChild(overlay);
+  });
+
+  modal.appendChild(h3);
+  modal.appendChild(body);
+  modal.appendChild(btn);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
+// Registrer afslutning på samtalen baseret på patientens tekst
+function checkForEndConversation(text, patientName) {
+  try {
+    const normalized = (text || '').toLowerCase();
+    // Simple heuristik: indeholder "tak for samtalen" eller "tak for i dag"
+    if (normalized.includes('tak for samtalen') || normalized.includes('tak for i dag') || normalized.includes('tak for idag')) {
+      showEndConversationPopup(patientName);
+    }
+  } catch (e) {
+    // Ignorer fejl
+  }
+}
+
+function showEndConversationPopup(patientName) {
+  const uiCfg = (config && config.ui && config.ui.end_conversation_popup) || {};
+  const title = uiCfg.title || 'Samtalen er afsluttet';
+  const message = uiCfg.message || `${patientName || 'Patienten'} sluttede samtalen.`;
+  const buttonText = uiCfg.button_text || 'Prøv igen';
+
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.inset = '0';
+  overlay.style.background = 'rgba(0,0,0,0.4)';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.zIndex = '9999';
+
+  const modal = document.createElement('div');
+  modal.style.background = '#ffffff';
+  modal.style.borderRadius = '12px';
+  modal.style.padding = '24px';
+  modal.style.width = 'min(520px, 90vw)';
+  modal.style.boxShadow = '0 10px 25px rgba(0,0,0,0.15)';
+  modal.style.fontFamily = 'Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+
+  const h3 = document.createElement('h3');
+  h3.textContent = title;
+  h3.style.margin = '0 0 12px 0';
+  h3.style.fontSize = '1.25rem';
+  h3.style.fontWeight = '600';
+
+  const body = document.createElement('div');
+  body.innerHTML = message;
+  body.style.color = '#374151';
+  body.style.lineHeight = '1.5';
+  body.style.marginBottom = '16px';
+
+  const btn = document.createElement('button');
+  btn.textContent = buttonText;
+  btn.style.background = '#0ea5e9';
+  btn.style.color = '#fff';
+  btn.style.border = 'none';
+  btn.style.borderRadius = '8px';
+  btn.style.padding = '10px 16px';
+  btn.style.cursor = 'pointer';
+  btn.style.fontWeight = '600';
+
+  btn.addEventListener('click', () => {
+    window.location.reload();
+  });
+
+  modal.appendChild(h3);
+  modal.appendChild(body);
+  modal.appendChild(btn);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 }
 
 // Funktion: Opdater område baseret på Mogens' status
@@ -857,7 +994,7 @@ function updateUIWithConfig() {
       taskDescription.innerHTML = uiConfig.page.task_description;
     }
     
-    // Opdater Mogens' initiale status
+    // Opdater Mogens' initiale status og statusbar
     const statusText = getStatusDescription(mogensStatus);
     const mogensStatusElement = document.getElementById('mogensStatus');
     if (mogensStatusElement) {
@@ -865,6 +1002,12 @@ function updateUIWithConfig() {
       console.log(`✅ Mogens status opdateret i HTML: ${statusText} (Status: ${mogensStatus}/5)`);
     } else {
       console.error('❌ mogensStatus element ikke fundet i updateUIWithConfig');
+    }
+    const statusFillInit = document.getElementById('statusFill');
+    if (statusFillInit) {
+      const percentageInit = (mogensStatus / 5) * 100;
+      statusFillInit.style.width = percentageInit + '%';
+      updateStatusBarColor(mogensStatus);
     }
     
     const adviceTitle = document.querySelector('.advice-box h3');

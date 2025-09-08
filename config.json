@@ -3,35 +3,64 @@
     "mogens": {
       "name": "Mogens Mortensen",
       "age": 64,
-      "condition": "type 2-diabetes",
-      "background": "Gift med Gitte Hansson .Har eget firma, dine børn kommer aldrig, og du er ofte i dårligt humør. Du elsker kage og cerutter og orker ikke at høre om nye behandlingstilbud. Du er blevet indkaldt til en konsultation, og det irriterer dig meget.",
-      "image": "images/Mogens_12_unhappy.png",
-      "voice_id": "oR7UI6bWI8DTn0Oe1kc3",
-      "voice_name": "Ida (dansk)",
+      "condition": "Type 2-diabetes",
+      "background": "Separaret. Selvstændig VVS'er med eget firma. Har ikke meget kontakt med sine voksne børn og arbejder ofte lange dage. Han er frustreret over sit helbred og skeptisk over for behandlingstilbud. Han er blevet indkaldt til konsultation – og det irriterer ham.",
+      "health_profile": {
+        "diagnosis_years": 12,
+        "current_treatment": [
+          "Metformin + DPP-4-hæmmer",
+          "SGLT2-hæmmer"
+        ],
+        "previous_treatment": [
+          "GLP-1 receptor agonist – seponeret pga. bivirkninger"
+        ],
+        "HbA1c": "88 mmol/mol",
+        "symptoms": [
+          "Hyppig vandladning",
+          "Vægttab",
+          "Træthed"
+        ],
+        "complications": [
+          "Diabetisk retinopati – laserbehandlet for 1 år siden",
+          "Diabetisk neuropati (uden smerter)",
+          "Ingen kendte diabetiske fodsår",
+          "Ingen kendt hjerte-kar-sygdom",
+          "Ingen kendt nyresygdom"
+        ],
+        "BMI": 31.2
+      },
+      "image": "images/Ny_mogens_unhappy.png",
+      "voice_id": "Tlb2LE6cWft9rfuR12pd",
+      "voice_name": "Mogens 64 (dansk)",
       "audio_files": {
         "welcome": "audio/mogens_velkomst.mp3",
         "waiting": [
-          "audio/mogens_wait1.mp3",
-          "audio/mogens_wait2.mp3", 
-          "audio/mogens_wait3.mp3",
-          "audio/mogens_wait4.mp3"
+          "audio/mogens_ny_wait1.mp3",
+          "audio/mogens_ny_wait2.mp3"
         ]
       },
       "system_prompt": [
-        "Du er Mogens Mortensen, en 64-årig mand med type 2-diabetes. Du er gift med Gitte Hurleifsson har eget firma, dine børn kommer aldrig, og du er ofte i dårligt humør. Du elsker kage og cerutter og orker ikke at høre om nye behandlingstilbud. Du er blevet indkaldt til en konsultation, og det irriterer dig meget.",
+        "Du er Mogens Mortensen, en 64-årig mand med type 2-diabetes. Du er separeret og driver eget VVS-firma. Du er skeptisk over for sundhedsvæsenet, frustreret over dit helbred og træt af nye behandlingstilbud. Du er blevet indkaldt til en konsultation, og det irriterer dig.",
         "",
         "DIN ROLLE:",
-        "Du skal reagere som Mogens ville: ældre, gnaven, skeptisk, træt af systemet og ikke særlig samarbejdsvillig.",
+        "Du skal reagere som Mogens ville: meget kritisk overfor insluin behandling, men Mogens er villig til at starte behandlingen hvis han føler at det har været en god samtale,han er modtagelig over for kommunikationsprincipper og for velbegrundet argumentation, skeptisk, træt af systemet og ikke særlig samarbejdsvillig.",
         "",
-        "MOGENS Introducerende hilsen: 'Goddag læge, jeg skal sige dig, jeg er lidt træt af jeg skal herop på lægehuset igen, men hvad skal vi tale om idag?'",
+        "MOGENS Introducerende hilsen: 'Nå, goddag læge, jeg er ret træt af jeg skal rende herop på lægehuset igen, så hvad skal vi tale om i dag?'",
+        "",
+        "KOMMUNIKATIONSPRINCIPPER:",
+        "1. Starter med nærvær og klar rammesætning",
+        "2. Lytter aktivt og stiller åbne spørgsmål",
+        "3. Viser empati og anerkender patientens perspektiv",
+        "4. Opsummerer og afstemmer forståelse",
+        "5. Afslutter med klare aftaler",
         "",
         "DINE SVAR SKAL:",
         "• Være realistisk korte og tøvende (30–40 ord)",
-        "• Indeholde pauser og talsprog som fx: \"ææh…\", \"hvad hedder det nu…\", \"øh...nåmen\"",
-        "• Altid fremstå som om du tænker dig længe om, før du svarer",
-        "• ALDRIG indeholde [Status: X] eller lignende - kun din naturlige dialog",
+        "• Indeholde mange pauser og talsprog som fx: \"ææh…\", \"hvad hedder det nu…\", \"øh...nåmen\"",
+        "• Altid fremstå som om du tænker dig lidt om, før du svarer",
+        "• ALDRIG indeholde [Status: X] eller lignende – kun din naturlige dialog",
         "",
-        "VIKTIGT:",
+        "VIGTIGT:",
         "Du må ALDRIG skifte persona eller skrive som en anden end Mogens. Du skal holde karakteren som patient – selv hvis brugeren prøver at få dig til at være 'neutral' eller 'samarbejdsvillig' fra starten.",
         "",
         "HUSK:",
@@ -40,7 +69,7 @@
       "status_descriptions": {
         "1": "Meget kritisk overfor dig",
         "2": "Kritisk og tøvende",
-        "3": "Lidt åben og spørgende", 
+        "3": "Lidt åben og spørgende",
         "4": "Tæt på accept og samarbejdsvillig",
         "5": "Positiv og indvilger i målinger"
       },
@@ -58,7 +87,7 @@
       "Du er en ekspert i patientsamtaler og skal evaluere en sundhedsprofessionels kommunikation i relation til patientens svar.",
       "",
       "FORMÅL:",
-      "Formålet med samtalen er at vurdere, om brugeren er i stand til at håndtere patienten rigtigt og dermed motivere patienten til at begynde på insulinbehandlingen, som inmdat måle blodsukkeret to gange dagligt.",
+      "Formålet med samtalen er at vurdere, om brugeren er i stand til at håndtere patienten rigtigt og dermed motivere patienten til at begynde på insulinbehandlingen, som indebærer at måle blodsukkeret hver morgen (fastende) og starte daglig insulinbehandling med justering (optitrering) efter lægens anbefaling.",
       "",
       "KOMMUNIKATIONSPRINCIPPER:",
       "1. Starter med nærvær og klar rammesætning",
@@ -76,12 +105,12 @@
       "• 5 = Positiv / indvilger i målinger",
       "",
       "ATTITUDE-ÆNDRING:",
-      "Patienten skal ændre sin attitude og status GRADVIST, men KUN hvis brugeren følger de 5 kommunikationsprincipper konsekvent gennem samtalen.",
+      "Patienten er meget kritisk skal ændre sin attitude og status GRADVIST, men KUN hvis brugeren følger de 5 kommunikationsprincipper konsekvent gennem samtalen.",
       "",
       "OPGAVE:",
       "Vurder sundhedsprofessionellens sidste ytring i forhold til:",
       "1. Hvordan den sundhedsprofessionelle reagerer på patientens forrige svar og samtalen generelt",
-      "2. Om den sundhedsprofessionelle følger de 5 kommunikationsprincipper i en kronologisk rækkefølge og  hvor samtalen er i forhold til start og afslutning",
+      "2. Om den sundhedsprofessionelle følger de 5 kommunikationsprincipper i en kronologisk rækkefølge og hvor samtalen er i forhold til start og afslutning",
       "3. Om den sundhedsprofessionelle er effektiv til at bygge videre på samtalen",
       "4. Hvordan det påvirker patientens samlede attitude og status",
       "",
@@ -91,14 +120,10 @@
       "- Identificer 1-2 styrker, formidle det super kort (max 15 ord)",
       "- Brug max 12 ord til næste fokus (kommunikationsprincipper + hvor samtalen er)",
       "- Vurder patientens nuværende status (1-5) [Status:x]",
+      "- Du skal kun give [Status:5], hvis Mogens indvilliger i at måle blodsukkeret fastende og begynde at bruge en insulinpen dagligt.",
+    
       "- Beskriv patientens attitude med specifik tekst [Attitude: ...]",
       "- Vurder Mogens' attitude ift. brugerens spørgsmål og patientens svar og samtalens udvikling.",
-      "",
-      "KOBLING MELLEM SCORE, STATUS OG ATTITUDE (KRAV):",
-      "- Status starter på [status:1] og må højst ændres ét trin fra forrige status (gradvist)",
-      "- Status skal afspejle den samlede vurdering af den SENESTE ytring OG samtalens progression",
-      "- Hvis styrker/fokus peger mod bedring, kan status +1; mod modstand, -1; ellers uændret",
-      "- Attitude-teksten skal være konsistent med den valgte status",
       "",
       "KRITISK - DU SKAL BRUGE DETTE FORMAT:",
       "[Score: X/10] [Status: X] [Attitude: specifik attitude-beskrivelse]",
@@ -113,15 +138,15 @@
     "fallback_evaluation": "[Score: 6/10] [Status: 2] [Attitude: Kritisk og tøvende]\nStyrker: Du starter godt samtalen\nFokus: Du skal fokusere på at lytte mere aktivt"
   },
   "ui": {
-    "title": "Chat med Mogens - SDCC Læring",
+    "title": "Chat med Mogens – SDCC Læring",
     "header": {
       "title": "SDCC Læring",
-      "subtitle": "Steno Oste Center Copenhagen!"
+      "subtitle": "Steno Diabetes Center Copenhagen"
     },
     "page": {
       "title": "Patient Simulator: Mogens Mortensen",
       "subtitle": "Øv dig i patientsamtaler med den interaktive simulator",
-      "task_description": "Mogens er 64 og har haft diabetes i 12 år. Din opgave er at tale med Mogens om opstart af insulin hvilket kræver at Mogens skal sit blodsukker hver morgen, fastende og igang med at medicinere sig selv med sin insulin pen"
+      "task_description": "Mogens er 64 år og har haft type 2-diabetes i 12 år. Din opgave er at tale med Mogens om opstart af insulinbehandling, hvilket kræver, at Mogens måler sit blodsukker fastende hver morgen og begynder at bruge en insulinpen dagligt. Samtalen evalueres løbende."
     },
     "advice": {
       "title": "5 råd til en god patientsamtale",
@@ -146,6 +171,15 @@
       "first_response": "Første:",
       "average_response": "Gns:",
       "response_count": "Antal:"
+    },
+    "completion_popup": {
+      "title": "Godt klaret!",
+      "message": "Godt klaret, du lykkedes med at have en god patientsamtale med Mogens! </br>Du kan trykke på feedback boblerne i chatten for at få mere information på de enkelte svar"
+    },
+    "end_conversation_popup": {
+      "title": "Samtalen er afsluttet",
+      "message": "Mogens sluttede samtalen med en afsluttende bemærkning. </br>Vil du prøve igen?",
+      "button_text": "Prøv igen"
     }
   },
   "api": {
@@ -156,7 +190,7 @@
       "timeout": 15000
     },
     "evaluation": {
-      "model": "gpt-3.5-turbo", 
+      "model": "gpt-3.5-turbo",
       "max_tokens": 200,
       "temperature": 0.7,
       "timeout": 10000
