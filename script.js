@@ -23,6 +23,7 @@ let performanceMetrics = {
 
 // Konfiguration fra server
 let config = null;
+let patientConfig = null; // Reference til aktiv patient fra config
 
 // Funktion: Afspil velkomstlyd når siden indlæses
 function playWelcomeAudio() {
@@ -34,7 +35,7 @@ function playWelcomeAudio() {
     }
     
     // Opret en ny Audio instans for velkomstlyden
-    const welcomeFile = config.characters.mogens.audio_files.welcome;
+    const welcomeFile = (patientConfig && patientConfig.audio_files?.welcome) || config.characters.mogens.audio_files.welcome;
     welcomeAudio = new Audio(welcomeFile);
     
     // Sæt volumen til et behageligt niveau (0.0 til 1.0)
@@ -69,7 +70,8 @@ function startAudioAndHideOverlay() {
     // Tilføj en klasse for at markere at overlayet er blevet brugt
     overlay.classList.add('used');
   }
-  playWelcomeAudio();
+  // Afspil introducerende hilsen i stedet for mp3
+  playInitialGreetingFromConfig();
 }
 
 // Funktion: Afspil ventelyd mens vi venter på Mogens' svar
@@ -82,7 +84,7 @@ function playWaitingAudio() {
     }
     
     // Vælg en tilfældig ventelyd fra konfigurationen
-    const waitingFiles = config.characters.mogens.audio_files.waiting;
+    const waitingFiles = (patientConfig && patientConfig.audio_files?.waiting) || config.characters.mogens.audio_files.waiting;
     const randomIndex = Math.floor(Math.random() * waitingFiles.length);
     const waitAudioPath = waitingFiles[randomIndex];
     
@@ -132,6 +134,42 @@ function stopWaitingAudio() {
     waitingAudio.pause();
     waitingAudio = null;
     console.log('Ventelyd stoppet');
+  }
+}
+
+// Funktion: Hent introducerende hilsen fra config og afspil via ElevenLabs
+function playInitialGreetingFromConfig() {
+  try {
+    const greeting = getInitialGreetingFromConfig();
+    if (!greeting) {
+      console.log('Ingen introducerende hilsen fundet i config. Springes over.');
+      return;
+    }
+    const requestId = 'init_' + Math.random().toString(36).substr(2, 6);
+    console.log(`[${requestId}] 🔊 Afspiller introducerende hilsen fra config`);
+    // Brug eksisterende TTS-funktion; den tilføjer også beskeden til dialogen og opdaterer UI
+    speakWithElevenLabsOnPlay(greeting, requestId);
+  } catch (error) {
+    console.error('Fejl ved afspilning af introducerende hilsen:', error);
+  }
+}
+
+// Funktion: Udtræk introducerende hilsen fra patientConfig.system_prompt
+function getInitialGreetingFromConfig() {
+  try {
+    const prompts = patientConfig && Array.isArray(patientConfig.system_prompt)
+      ? patientConfig.system_prompt
+      : [];
+    const line = prompts.find(l => typeof l === 'string' && l.toLowerCase().startsWith('mogens introducerende hilsen'));
+    if (!line) return null;
+    // Forsøg at finde tekst i enkelte anførselstegn '...'
+    const match = line.match(/'([^']+)'/);
+    if (match && match[1]) return match[1].trim();
+    // Alternativt fjern label og kolon
+    const afterColon = line.split(':').slice(1).join(':').trim();
+    return afterColon || null;
+  } catch (e) {
+    return null;
   }
 }
 
@@ -262,7 +300,7 @@ async function sendMessage() {
     console.log(`[${requestId}] 🤖 Sender til OpenAI API...`);
     const openaiStartTime = Date.now();
     
-    const res = await fetch('https://sdcc-tale-rsbot.onrender.com/api/chat', {
+    const res = await fetch('http://localhost:3000/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -275,14 +313,11 @@ async function sendMessage() {
     console.log(`[${requestId}] ✅ OpenAI API svaret på ${openaiTime}ms`);
     
     const data = await res.json();
-    const mogensReply = data.reply || "Ingen svar fra Mogens.";
+    const mogensReply = data.reply || `Ingen svar fra ${(patientConfig && patientConfig.name) || 'Patient'}.`;
 
-    console.log(`[${requestId}] 💭 Mogens' svar modtaget: "${mogensReply}"`);
+    console.log(`[${requestId}] 💭 ${(patientConfig && patientConfig.name) || 'Patient'}'s svar modtaget: "${mogensReply}"`);
 
-    // Ekstraher og opdater Mogens' status fra hans svar
-    updateMogensStatus(mogensReply);
-    
-    // Rens svaret og gem det rene svar i dialogen
+    // Rens svaret og gem det rene svar i dialogen (ingen status-parsing længere)
     const cleanReply = cleanMogensReply(mogensReply);
 
     // Start parallel processing: ElevenLabs og evaluering samtidigt
@@ -307,6 +342,39 @@ async function sendMessage() {
         lastUserMessage.feedback = evaluationResult.value;
         displayFeedback(evaluationResult.value);
         updateChatDisplay();
+        
+        // Parse og opdater Mogens' status og attitude fra evaluation feedback
+        console.log(`🔍 Evaluation feedback: "${evaluationResult.value}"`);
+        let newStatus = parseStatusFromEvaluation(evaluationResult.value);
+        const newAttitude = parseAttitudeFromEvaluation(evaluationResult.value);
+        console.log(`🔍 Parsed status: ${newStatus}, attitude: ${newAttitude}`);
+        
+        // Regel: Efter første bruger-ytring er status 1, med mindre score > 8
+        const userMsgCount = dialog.filter(m => m.sender === "Dig").length;
+        if (userMsgCount === 1) {
+          const firstScore = extractScoreFromFeedback(evaluationResult.value);
+          if (!(firstScore > 8)) {
+            newStatus = 1;
+            console.log(`🔧 Første ytring: score ${firstScore} → tvinger status til 1`);
+          } else {
+            // Score > 8: status må maksimalt være 2
+            const capped = newStatus == null ? 2 : Math.min(newStatus, 2);
+            console.log(`🔧 Første ytring: score ${firstScore} > 8 → cap status fra ${newStatus} til ${capped}`);
+            newStatus = capped;
+          }
+        }
+
+        if (newStatus !== null && newStatus >= 1 && newStatus <= 5) {
+          // Global regel: status må kun bevæge sig ét trin ad gangen
+          const clamped = clampStatusStep(mogensStatus, newStatus);
+          if (clamped !== newStatus) {
+            console.log(`🔧 Clamper status fra ${newStatus} til ${clamped} (maks ±1 fra ${mogensStatus})`);
+          }
+          console.log(`🔍 Kalder updateMogensStatusFromEvaluation...`);
+          updateMogensStatusFromEvaluation(clamped, newAttitude);
+        } else {
+          console.warn(`⚠️ Ingen gyldig status fundet i evaluation: ${newStatus}`);
+        }
       }
     } else {
       console.error(`[${requestId}] ❌ Evaluering fejlede:`, evaluationResult.reason);
@@ -344,7 +412,7 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
   try {
     console.log(`[${requestId}] 🔊 Starter ElevenLabs lyd generering...`);
 
-    const res = await fetch('https://sdcc-tale-rsbot.onrender.com/api/speak', {
+    const res = await fetch('http://localhost:3000/api/speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -362,9 +430,9 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
       // Stop ventelyden med fade-out effekt
       stopWaitingAudioWithFade();
       
-      // Tilføj Mogens' svar til dialogen med det samme
-      dialog.push({ sender: "Mogens", text: text });
-      console.log(`[${requestId}] ✅ Mogens' svar tilføjet til dialog: "${text}"`);
+      // Tilføj patientens svar til dialogen med det samme
+      dialog.push({ sender: (patientConfig && patientConfig.name) || "Patient", text: text });
+      console.log(`[${requestId}] ✅ Svar fra ${(patientConfig && patientConfig.name) || 'Patient'} tilføjet til dialog: "${text}"`);
       
       // Opdater chatvisningen for at vise Mogens' svar
       updateChatDisplay();
@@ -394,58 +462,109 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
   }
 }
 
-// Funktion: Opdater Mogens' status baseret på hans svar
-function updateMogensStatus(reply) {
-  // Søg efter status i hårde klammer [Status: X]
-  const statusMatch = reply.match(/\[Status:\s*(\d+)\]/);
-  if (statusMatch) {
-    const newStatus = parseInt(statusMatch[1]);
-    if (newStatus >= 1 && newStatus <= 5) {
-      const oldStatus = mogensStatus;
-      mogensStatus = newStatus;
-      
-      // Log status-ændringen
-      console.log(`🔄 Mogens' status ændret fra ${oldStatus} til ${newStatus}`);
-      
-      // Opdater h2-elementet med ny status
-      const statusText = getStatusDescription(mogensStatus);
-      document.getElementById('mogensStatus').innerText = `Mogens' nuværende attitude: ${statusText}`;
-      
-      // Opdater status-værdien
-      document.getElementById('statusValue').innerText = mogensStatus;
-      
-      // Opdater status-bar'en
-      const statusFill = document.getElementById('statusFill');
+// Funktion: Opdater patientens status baseret på evaluation feedback
+function updateMogensStatusFromEvaluation(newStatus, newAttitude = null) {
+  console.log(`🔍 updateMogensStatusFromEvaluation kaldt med: newStatus=${newStatus}, newAttitude=${newAttitude}`);
+  
+  if (newStatus >= 1 && newStatus <= 5) {
+    const oldStatus = mogensStatus;
+    mogensStatus = newStatus;
+    
+    // Log status-ændringen
+    console.log(`🔄 Patientens status ændret fra ${oldStatus} til ${newStatus} (fra evaluation)`);
+    console.log(`📊 Patientens nuværende status: ${mogensStatus}/5`);
+    
+    // Opdater h2-elementet med ny status - brug dynamisk attitude-tekst hvis tilgængelig
+    const statusText = newAttitude || getStatusDescription(mogensStatus);
+    const mogensStatusElement = document.getElementById('mogensStatus');
+    
+    console.log(`🔍 Søger efter mogensStatus element:`, mogensStatusElement);
+    console.log(`🔍 Status tekst: ${statusText}`);
+    
+    if (mogensStatusElement) {
+      mogensStatusElement.innerText = `${(patientConfig && patientConfig.name) || 'Patient'}'s nuværende attitude: ${statusText} (Status: ${mogensStatus}/5)`;
+      console.log(`✅ Mogens status tekst opdateret`);
+    } else {
+      console.error('❌ mogensStatus element ikke fundet');
+    }
+    
+    // Opdater status-bar'en
+    const statusFill = document.getElementById('statusFill');
+    console.log(`🔍 Søger efter statusFill element:`, statusFill);
+    
+    if (statusFill) {
       const percentage = (mogensStatus / 5) * 100;
       statusFill.style.width = percentage + '%';
-      
-      // Tilføj visuel feedback
-      updateStatusBarColor(mogensStatus);
+      console.log(`✅ Status bar opdateret til ${percentage}%`);
+    } else {
+      console.error('❌ statusFill element ikke fundet');
     }
+    
+    // Tilføj visuel feedback
+    updateStatusBarColor(mogensStatus);
+    
+    // Opdater område baseret på status
+    updateAreaByStatus(mogensStatus);
+  } else {
+    console.warn(`⚠️ Ugyldig status: ${newStatus} (skal være 1-5)`);
   }
 }
 
 // Funktion: Opdater status-bar farve baseret på status
 function updateStatusBarColor(status) {
   const statusFill = document.getElementById('statusFill');
-  const statusValue = document.getElementById('statusValue');
   
-  // Fjern alle farve-klasser
-  statusValue.className = 'status-value';
-  
+  // Opdater gradient baseret på status
   if (status <= 2) {
-    statusValue.style.background = '#ef4444'; // Rød for kritisk
+    statusFill.style.background = 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)'; // Rød gradient
   } else if (status === 3) {
-    statusValue.style.background = '#f59e0b'; // Orange for neutral
+    statusFill.style.background = 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)'; // Orange gradient
   } else {
-    statusValue.style.background = '#10b981'; // Grøn for positiv
+    statusFill.style.background = 'linear-gradient(90deg, #10b981 0%, #059669 100%)'; // Grøn gradient
   }
 }
 
-// Funktion: Fjern status-tekst fra Mogens' svar
+// Funktion: Opdater område baseret på Mogens' status
+function updateAreaByStatus(status) {
+  const mogensProfile = document.querySelector('.mogens-profile');
+  const mogensPortrait = document.querySelector('.mogens-portrait');
+  
+  console.log(`🔍 Søger efter DOM elementer...`);
+  console.log(`🔍 mogensProfile:`, mogensProfile);
+  console.log(`🔍 mogensPortrait:`, mogensPortrait);
+  
+  if (!mogensProfile) {
+    console.error('❌ .mogens-profile element ikke fundet');
+    return;
+  }
+  
+  if (!mogensPortrait) {
+    console.warn('⚠️ .mogens-portrait element ikke fundet');
+  }
+  
+  // Fjern alle status-klasser
+  mogensProfile.classList.remove('status-1', 'status-2', 'status-3', 'status-4', 'status-5');
+  
+  // Tilføj ny status-klasse
+  mogensProfile.classList.add(`status-${status}`);
+  
+  console.log(`🖼️ Opdateret område til status ${status}`);
+  console.log(`🖼️ Mogens profile klasser:`, mogensProfile.className);
+}
+
+// Funktion: Rens Mogens' svar - fjern alle hårde klammer før ElevenLabs
 function cleanMogensReply(reply) {
-  // Fjern [Status: X] fra svaret
-  return reply.replace(/\[Status:\s*\d+\]/g, '').trim();
+  // Fjern alle hårde klammer [tekst] fra svaret før det sendes til ElevenLabs
+  return reply.replace(/\[[^\]]*\]/g, '').trim();
+}
+
+// Helper: Begræns statusændring til højst ±1 fra nuværende status
+function clampStatusStep(currentStatus, proposedStatus) {
+  if (proposedStatus == null) return currentStatus;
+  if (typeof currentStatus !== 'number') return proposedStatus;
+  const minAllowed = Math.max(1, currentStatus - 1);
+  const maxAllowed = Math.min(5, currentStatus + 1);
+  return Math.max(minAllowed, Math.min(maxAllowed, proposedStatus));
 }
 
 // Funktion: Få beskrivelse af status
@@ -454,24 +573,48 @@ function getStatusDescription(status) {
   return descriptions[status] || "Ukendt status";
 }
 
+// Funktion: Parse status fra evaluation feedback
+function parseStatusFromEvaluation(feedback) {
+  console.log(`🔍 Parser status fra feedback: "${feedback}"`);
+  const statusMatch = feedback.match(/\[Status:\s*(\d+)\]/);
+  console.log(`🔍 Status match resultat:`, statusMatch);
+  return statusMatch ? parseInt(statusMatch[1]) : null;
+}
+
+// Funktion: Parse attitude-tekst fra evaluation feedback
+function parseAttitudeFromEvaluation(feedback) {
+  console.log(`🔍 Parser attitude fra feedback: "${feedback}"`);
+  const attitudeMatch = feedback.match(/\[Attitude:\s*([^\]]+)\]/);
+  console.log(`🔍 Attitude match resultat:`, attitudeMatch);
+  const result = attitudeMatch ? attitudeMatch[1].trim() : null;
+  console.log(`🔍 Parsed attitude: "${result}"`);
+  return result;
+}
+
 // Funktion: Evaluer brugerens ytring i relation til Mogens' svar
 async function evaluateUserMessageInContext(userMessage, mogensReply, conversationContext, requestId) {
   try {
     console.log(`[${requestId}] 🔍 Starter evaluering...`);
     
-    const res = await fetch('https://sdcc-tale-rsbot.onrender.com/api/evaluate', {
+    const requestBody = { 
+      userMessage: userMessage,
+      mogensReply: mogensReply,
+      conversationContext: conversationContext.slice(-5) // Sidste 5 beskeder som kontekst
+    };
+    
+    console.log(`[${requestId}] 🔍 Sender til evaluation API:`, requestBody);
+    
+    const res = await fetch('http://localhost:3000/api/evaluate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        userMessage: userMessage,
-        mogensReply: mogensReply,
-        conversationContext: conversationContext.slice(-5) // Sidste 5 beskeder som kontekst
-      })
+      body: JSON.stringify(requestBody)
     });
     
     if (res.ok) {
       const data = await res.json();
       console.log(`[${requestId}] ✅ Evaluering modtaget`);
+      console.log(`[${requestId}] 🔍 RAW evaluation data:`, data);
+      console.log(`[${requestId}] 🔍 Evaluation text: "${data.evaluation}"`);
       return data.evaluation;
     } else {
       console.error(`[${requestId}] ❌ Evaluering fejl:`, res.status);
@@ -498,9 +641,9 @@ function updateChatDisplay() {
       chatHTML += `<span class="user-message">${msg.sender}: ${msg.text}</span><span class="score-bubble ${scoreClass} clickable" data-feedback="${msg.feedback}" title="Klik for at se feedback (Score: ${score}/10)">${score}</span>\n\n`;
     } else if (msg.sender === "Dig") {
       // Brugerbesked uden feedback endnu
-      chatHTML += `<span class="user-message">${msg.sender}: ${msg.text}</span><span class="score-bubble loading" title="Venter på Mogens' svar...">⏳</span>\n\n`;
+      chatHTML += `<span class="user-message">${msg.sender}: ${msg.text}</span><span class="score-bubble loading" title="Venter på ${(patientConfig && patientConfig.name) || 'patientens'} svar...">⏳</span>\n\n`;
     } else {
-      // Mogens' beskeder uden score-kugle
+      // Patientens beskeder uden score-kugle
       chatHTML += `${msg.sender}: ${msg.text}\n\n`;
     }
   });
@@ -583,13 +726,13 @@ function setInputState(active) {
   
   if (active) {
     promptInput.disabled = false;
-    promptInput.placeholder = "Skriv din besked til Mogens...";
+    promptInput.placeholder = `Skriv din besked til ${(patientConfig && patientConfig.name) || 'patienten'}...`;
     sendButton.disabled = false;
     sendButton.textContent = "Send";
     micButton.disabled = false;
   } else {
     promptInput.disabled = true;
-    promptInput.placeholder = "Venter på Mogens' svar...";
+    promptInput.placeholder = `Venter på ${(patientConfig && patientConfig.name) || 'patientens'} svar...`;
     sendButton.disabled = true;
     sendButton.textContent = "Venter...";
     micButton.disabled = true;
@@ -603,6 +746,13 @@ function displayFeedback(evaluation) {
   // Parse evalueringen for at udtrække score
   const scoreMatch = evaluation.match(/\[Score:\s*(\d+)\/10\]/);
   const score = scoreMatch ? parseInt(scoreMatch[1]) : 5;
+  
+  // Rens visningstekst: fjern Score/Status/Attitude tokens fra feedback-teksten
+  const cleanedEvaluation = evaluation
+    .replace(/\[Score:\s*\d+\/10\]/, '')
+    .replace(/\[Status:\s*\d+\]/, '')
+    .replace(/\[Attitude:\s*[^\]]+\]/, '')
+    .trim();
   
   // Bestem score-klasse
   let scoreClass = 'score-poor';
@@ -624,7 +774,7 @@ function displayFeedback(evaluation) {
         </div>
       </div>
       <div class="feedback-details">
-        ${evaluation.replace(/\[Score:\s*\d+\/10\]/, '').trim()}
+        ${cleanedEvaluation}
       </div>
     </div>
   `;
@@ -643,11 +793,33 @@ async function loadConfig() {
     const response = await fetch('http://localhost:3000/api/config');
     config = await response.json();
     console.log('✅ Konfiguration indlæst fra server');
+    // Sæt aktiv patient (pt. Mogens)
+    patientConfig = (config && config.characters && config.characters.mogens) ? config.characters.mogens : null;
     
     // Opdater UI med konfigurationen
     updateUIWithConfig();
+    
+    // Sæt initial status - vent lidt for at sikre DOM er klar
+    setTimeout(() => {
+      updateAreaByStatus(mogensStatus);
+      console.log(`📊 ${(patientConfig && patientConfig.name) || 'Patient'}'s initiale status: ${mogensStatus}/5`);
+    }, 500);
   } catch (error) {
     console.error('❌ Fejl ved indlæsning af konfiguration:', error);
+  }
+}
+
+// Funktion: Genindlæs konfiguration (hot reload)
+async function reloadConfig() {
+  try {
+    // Genindlæs config på serveren
+    await fetch('http://localhost:3000/api/reload-config', { method: 'POST' });
+    
+    // Hent den nye config
+    await loadConfig();
+    console.log('🔄 Konfiguration genindlæst');
+  } catch (error) {
+    console.error('❌ Fejl ved genindlæsning af konfiguration:', error);
   }
 }
 
@@ -680,9 +852,19 @@ function updateUIWithConfig() {
       pageSubtitle.textContent = uiConfig.page.subtitle;
     }
     
-    const taskDescription = document.querySelector('.chat-header p');
+    const taskDescription = document.querySelector('.task-description');
     if (taskDescription && uiConfig.page?.task_description) {
       taskDescription.innerHTML = uiConfig.page.task_description;
+    }
+    
+    // Opdater Mogens' initiale status
+    const statusText = getStatusDescription(mogensStatus);
+    const mogensStatusElement = document.getElementById('mogensStatus');
+    if (mogensStatusElement) {
+      mogensStatusElement.innerText = `Mogens' nuværende attitude: ${statusText} (Status: ${mogensStatus}/5)`;
+      console.log(`✅ Mogens status opdateret i HTML: ${statusText} (Status: ${mogensStatus}/5)`);
+    } else {
+      console.error('❌ mogensStatus element ikke fundet i updateUIWithConfig');
     }
     
     const adviceTitle = document.querySelector('.advice-box h3');
