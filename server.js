@@ -56,6 +56,14 @@ let mogensConfig = null;
 // Initialiser Express-app
 const app = express();
 
+// Hjælpefunktion: Accepter både streng og array som prompt
+function normalizePrompt(promptValue) {
+  if (Array.isArray(promptValue)) {
+    return promptValue.join('\n');
+  }
+  return promptValue;
+}
+
 // Middleware: Tillad CORS og JSON-body parsing
 app.use(cors());
 app.use(express.json());
@@ -84,7 +92,7 @@ app.post('/api/chat', async (req, res) => {
     const messages = [
       {
         role: 'system',
-        content: mogensConfig.system_prompt
+        content: normalizePrompt(mogensConfig.system_prompt)
       },
       // Tilføj tidligere dialog
       ...dialog.map(msg => ({
@@ -166,7 +174,7 @@ app.post('/api/evaluate', async (req, res) => {
     const messages = [
       {
         role: 'system',
-        content: config.evaluation.system_prompt
+        content: normalizePrompt(config.evaluation.system_prompt)
       },
       // Tilføj samtale-kontekst
       ...conversationContext.map(msg => ({
@@ -300,6 +308,18 @@ app.post('/api/speak', async (req, res) => {
 // =====================
 app.get('/api/config', (req, res) => {
   res.json(config);
+});
+
+// =====================
+// Reload config endpoint - Genindlæs config fra fil
+// =====================
+app.post('/api/reload-config', async (req, res) => {
+  try {
+    await loadConfig();
+    res.json({ success: true, message: 'Config reloaded' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // =====================
