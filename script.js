@@ -357,39 +357,40 @@ async function sendMessage() {
     // Rens svaret og gem det rene svar i dialogen (ingen status-parsing længere)
     const cleanReply = cleanMogensReply(mogensReply);
 
-    // Start parallel processing: ElevenLabs og evaluering samtidigt
-    console.log(`[${requestId}] 🔄 Starter parallel processing...`);
-    
-    const [audioResult, evaluationResult] = await Promise.allSettled([
-      speakWithElevenLabsOnPlay(cleanReply, requestId),
-      evaluateUserMessageInContext(userMessage, cleanReply, dialog, requestId)
-    ]);
-    
-    // Håndter resultater
-    if (audioResult.status === 'fulfilled') {
+    // Sekventiel behandling: Først lyd (Mogens' svar), derefter evaluering
+    console.log(`[${requestId}] 🔊 Starter lyd, derefter evaluering...`);
+    try {
+      await speakWithElevenLabsOnPlay(cleanReply, requestId);
       console.log(`[${requestId}] ✅ Lyd generering færdig`);
-    } else {
-      console.error(`[${requestId}] ❌ Lyd generering fejlede:`, audioResult.reason);
+    } catch (audioErr) {
+      console.error(`[${requestId}] ❌ Lyd generering fejlede:`, audioErr);
     }
-    
-    if (evaluationResult.status === 'fulfilled' && evaluationResult.value) {
+
+    let evaluationText = null;
+    try {
+      evaluationText = await evaluateUserMessageInContext(userMessage, cleanReply, dialog, requestId);
+    } catch (evalErr) {
+      console.error(`[${requestId}] ❌ Evaluering kastede fejl:`, evalErr);
+    }
+
+    if (evaluationText) {
       console.log(`[${requestId}] ✅ Evaluering færdig`);
       const lastUserMessage = dialog.findLast(msg => msg.sender === "Dig");
       if (lastUserMessage) {
-        lastUserMessage.feedback = evaluationResult.value;
-        displayFeedback(evaluationResult.value);
+        lastUserMessage.feedback = evaluationText;
+        displayFeedback(evaluationText);
         updateChatDisplay();
         
         // Parse og opdater Mogens' status og attitude fra evaluation feedback
-        console.log(`🔍 Evaluation feedback: "${evaluationResult.value}"`);
-        let newStatus = parseStatusFromEvaluation(evaluationResult.value);
-        const newAttitude = parseAttitudeFromEvaluation(evaluationResult.value);
+        console.log(`🔍 Evaluation feedback: "${evaluationText}"`);
+        let newStatus = parseStatusFromEvaluation(evaluationText);
+        const newAttitude = parseAttitudeFromEvaluation(evaluationText);
         console.log(`🔍 Parsed status: ${newStatus}, attitude: ${newAttitude}`);
         
         // Regel: Efter første bruger-ytring er status 1, med mindre score > 8
         const userMsgCount = dialog.filter(m => m.sender === "Dig").length;
         if (userMsgCount === 1) {
-          const firstScore = extractScoreFromFeedback(evaluationResult.value);
+          const firstScore = extractScoreFromFeedback(evaluationText);
           if (!(firstScore > 8)) {
             newStatus = 1;
             console.log(`🔧 Første ytring: score ${firstScore} → tvinger status til 1`);
@@ -414,7 +415,7 @@ async function sendMessage() {
         }
       }
     } else {
-      console.error(`[${requestId}] ❌ Evaluering fejlede:`, evaluationResult.reason);
+      console.error(`[${requestId}] ❌ Evaluering fejlede eller tomt resultat`);
     }
     
   } catch (err) {

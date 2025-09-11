@@ -64,6 +64,21 @@ function normalizePrompt(promptValue) {
   return promptValue;
 }
 
+// Byg samlet system-prompt til både chat og evaluering
+function buildCombinedSystemPrompt() {
+  const patientSection = normalizePrompt(mogensConfig.system_prompt) || '';
+  const evaluationSection = normalizePrompt(config.evaluation.system_prompt) || '';
+
+  // Afgrænsning, så chat-svar ikke formateres som evaluering
+  return (
+    "[ROLLE: PATIENT – MOGENS]\n" +
+    patientSection +
+    "\n\n---\n" +
+    "[ROLLE: EVALUERING – KUN TIL /api/evaluate. IGNORÉR DENNE SEKTION I CHAT-SVAR.]\n" +
+    evaluationSection
+  );
+}
+
 // Middleware: Tillad CORS og JSON-body parsing
 app.use(cors());
 app.use(express.json());
@@ -92,7 +107,11 @@ app.post('/api/chat', async (req, res) => {
     const messages = [
       {
         role: 'system',
-        content: normalizePrompt(mogensConfig.system_prompt)
+        content: buildCombinedSystemPrompt()
+      },
+      {
+        role: 'system',
+        content: 'CHAT-MODE: Du svarer KUN som Mogens i naturlig dialog. Brug korte, tøvende sætninger på dansk, hold karakter, og INGEN evaluering, INGEN [Score]/[Status]/[Attitude], INGEN meta-instruktioner. Du er patienten.'
       },
       // Tilføj tidligere dialog
       ...dialog.map(msg => ({
@@ -174,7 +193,11 @@ app.post('/api/evaluate', async (req, res) => {
     const messages = [
       {
         role: 'system',
-        content: normalizePrompt(config.evaluation.system_prompt)
+        content: buildCombinedSystemPrompt()
+      },
+      {
+        role: 'system',
+        content: 'EVALUATION-MODE: Du skal KUN levere evaluering i det angivne format. Du må IKKE svare som Mogens eller fortsætte dialogen.'
       },
       // Tilføj samtale-kontekst
       ...conversationContext.map(msg => ({

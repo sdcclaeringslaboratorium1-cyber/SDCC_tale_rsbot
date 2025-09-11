@@ -695,9 +695,24 @@ body {
     gap: 1rem;
   }
   
+  .container {
+    max-width: 100%;
+    padding: 0 12px;
+  }
+  
+  /* Sørg for at toppen (header) fylder hele bredden på mobil */
+  .header,
+  .header .container {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  
   .advice-box {
     position: static;
-    order: -1;
+    order: 2; /* Placeres efter chat-container */
+    margin-top: 1rem;
   }
 }
 
