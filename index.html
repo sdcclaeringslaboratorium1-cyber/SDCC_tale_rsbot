@@ -55,11 +55,12 @@
             <p class="task-description">Mogens er 64 og har haft diabetes i 10 år. <br/><b>Din opgave er at tale med Mogens om at måle sit blodsukker hver dag morgen og aften med henblik på muligvis at starte på insulinbehandling</b></p>
           
             <div class="mogens-profile">
-              <div class="mogens-image">
+              <div class="mogens-image" style="position: relative;">
                 <img src="images/Ny_mogens_unhappy1.png" alt="Mogens Mortensen" class="mogens-portrait">
+                <button class="info-button" id="infoButton" title="Se Mogens' information">i</button>
               </div>
               <div class="mogens-status-info">
-                <h3 id="mogensStatus">Mogens' nuværende attitude: Indlæser...</h3>
+                <h3 id="mogensStatus">Patientens nuværende attitude: Indlæser...</h3>
                 <div class="status-indicator">
                   <div class="status-bar">
                     <div class="status-fill" id="statusFill"></div>
@@ -107,6 +108,17 @@
       </div>
     </div>
   </main>
+
+  <!-- Info Modal -->
+  <div id="infoModal" class="info-modal">
+    <div class="info-modal-content">
+      <span class="info-modal-close" id="infoModalClose">&times;</span>
+      <h3 id="infoModalTitle">Mogens Mortensen - Patient Information</h3>
+      <div id="infoModalContent">
+        <!-- Content will be populated by JavaScript -->
+      </div>
+    </div>
+  </div>
 
   <!-- Footer -->
   <footer class="footer">

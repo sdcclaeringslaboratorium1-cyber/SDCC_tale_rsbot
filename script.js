@@ -25,6 +25,13 @@ let performanceMetrics = {
 let config = null;
 let patientConfig = null; // Reference til aktiv patient fra config
 let completionShown = false; // Popup vises kun én gang ved 5/5
+let initialLoaderInterval = null; // Interval til loader-tekst
+
+// Backend base URL. Tom streng = samme origin. Sættes automatisk til Render ved fallback
+let API_BASE = '';
+function apiUrl(path) {
+  return (API_BASE ? API_BASE : '') + path;
+}
 
 // Funktion: Afspil velkomstlyd når siden indlæses
 function playWelcomeAudio() {
@@ -71,6 +78,8 @@ function startAudioAndHideOverlay() {
     // Tilføj en klasse for at markere at overlayet er blevet brugt
     overlay.classList.add('used');
   }
+  // Vis loader indtil første lyd afspilles
+  showInitialLoader();
   // Afspil introducerende hilsen i stedet for mp3
   playInitialGreetingFromConfig();
 }
@@ -91,12 +100,37 @@ function playWaitingAudio() {
     
     // Opret og afspil ny ventelyd
     waitingAudio = new Audio(waitAudioPath);
-    waitingAudio.volume = config.audio.waiting_volume;
+    waitingAudio.volume = 0; // Start stille for fade-in
     waitingAudio.loop = true; // Gentag lyden indtil svaret kommer
+    
+    // Sæt tilfældig startposition (0-7 sekunder)
+    const randomStartTime = Math.random() * 7;
+    
+    waitingAudio.addEventListener('loadedmetadata', () => {
+      waitingAudio.currentTime = Math.min(randomStartTime, waitingAudio.duration || 0);
+    });
     
     waitingAudio.play().catch(error => {
       console.log('Kunne ikke afspille ventelyd:', error);
     });
+    
+    // Fade-in effekt
+    const targetVolume = config.audio.waiting_volume;
+    const fadeInDuration = 1000; // 1 sekund fade-in
+    const fadeInSteps = 20;
+    const fadeInInterval = fadeInDuration / fadeInSteps;
+    const volumeStep = targetVolume / fadeInSteps;
+    
+    let currentStep = 0;
+    const fadeInTimer = setInterval(() => {
+      currentStep++;
+      if (currentStep <= fadeInSteps) {
+        waitingAudio.volume = Math.min(targetVolume, waitingAudio.volume + volumeStep);
+      } else {
+        clearInterval(fadeInTimer);
+        waitingAudio.volume = targetVolume;
+      }
+    }, fadeInInterval);
     
     console.log(`Ventelyd ${randomIndex + 1} afspilles...`);
   } catch (error) {
@@ -144,6 +178,7 @@ function playInitialGreetingFromConfig() {
     const greeting = getInitialGreetingFromConfig();
     if (!greeting) {
       console.log('Ingen introducerende hilsen fundet i config. Springes over.');
+      hideInitialLoader();
       return;
     }
     const requestId = 'init_' + Math.random().toString(36).substr(2, 6);
@@ -152,6 +187,7 @@ function playInitialGreetingFromConfig() {
     speakWithElevenLabsOnPlay(greeting, requestId);
   } catch (error) {
     console.error('Fejl ved afspilning af introducerende hilsen:', error);
+    hideInitialLoader();
   }
 }
 
@@ -301,7 +337,7 @@ async function sendMessage() {
     console.log(`[${requestId}] 🤖 Sender til OpenAI API...`);
     const openaiStartTime = Date.now();
     
-    const res = await fetch('http://localhost:3000/api/chat', {
+    const res = await fetch(apiUrl('/api/chat'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -413,7 +449,7 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
   try {
     console.log(`[${requestId}] 🔊 Starter ElevenLabs lyd generering...`);
 
-    const res = await fetch('http://localhost:3000/api/speak', {
+    const res = await fetch(apiUrl('/api/speak'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -445,8 +481,18 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
         audioPlayer.onplay = function() {
           // Genaktiver input
           setInputState(true);
+          // Skjul initial loader når første lyd starter
+          hideInitialLoader();
           
           audioPlayer.onplay = null;
+        };
+        // Fokus på input når lyden slutter
+        audioPlayer.onended = function() {
+          const promptInput = document.getElementById('prompt');
+          if (promptInput) {
+            promptInput.focus();
+          }
+          audioPlayer.onended = null;
         };
         audioPlayer.play();
       }, playDelay);
@@ -463,7 +509,79 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
     // Stop ventelyden ved fejl
     stopWaitingAudio();
     document.getElementById('response').innerText += "\n(Fejl i tekst-til-tale)";
+    hideInitialLoader();
     throw err;
+  }
+}
+
+// Loader: vis ved opstart indtil første lyd afspilles
+function showInitialLoader() {
+  try {
+    let loader = document.getElementById('initialLoader');
+    if (!loader) {
+      loader = document.createElement('div');
+      loader.id = 'initialLoader';
+      loader.style.display = 'flex';
+      loader.style.alignItems = 'center';
+      loader.style.gap = '10px';
+      loader.style.padding = '10px 12px';
+      loader.style.border = '1px solid #e5e7eb';
+      loader.style.borderRadius = '10px';
+      loader.style.background = '#ffffff';
+      loader.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+      loader.style.width = 'fit-content';
+      loader.style.margin = '12px 0';
+
+      const dot = document.createElement('div');
+      dot.style.width = '10px';
+      dot.style.height = '10px';
+      dot.style.borderRadius = '50%';
+      dot.style.background = '#10b981';
+      dot.style.opacity = '0.8';
+
+      const text = document.createElement('div');
+      text.id = 'initialLoaderText';
+      text.style.color = '#374151';
+      text.style.fontSize = '0.95rem';
+      text.textContent = 'Mogens forbereder sig';
+
+      loader.appendChild(dot);
+      loader.appendChild(text);
+
+      const chatContainer = document.querySelector('.chat-container');
+      const chatHeader = document.querySelector('.chat-header');
+      if (chatContainer) {
+        if (chatHeader && chatHeader.parentNode === chatContainer) {
+          chatHeader.after(loader);
+        } else {
+          chatContainer.prepend(loader);
+        }
+      }
+
+      let dots = 0;
+      initialLoaderInterval = setInterval(() => {
+        dots = (dots + 1) % 4;
+        const t = document.getElementById('initialLoaderText');
+        if (t) t.textContent = 'Mogens forbereder sig' + '.'.repeat(dots);
+      }, 500);
+    } else {
+      loader.style.display = 'flex';
+    }
+  } catch (e) {
+    // Ignorer fejl
+  }
+}
+
+function hideInitialLoader() {
+  try {
+    if (initialLoaderInterval) {
+      clearInterval(initialLoaderInterval);
+      initialLoaderInterval = null;
+    }
+    const loader = document.getElementById('initialLoader');
+    if (loader) loader.remove();
+  } catch (e) {
+    // Ignorer fejl
   }
 }
 
@@ -741,7 +859,7 @@ async function evaluateUserMessageInContext(userMessage, mogensReply, conversati
     
     console.log(`[${requestId}] 🔍 Sender til evaluation API:`, requestBody);
     
-    const res = await fetch('http://localhost:3000/api/evaluate', {
+    const res = await fetch(apiUrl('/api/evaluate'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody)
@@ -927,8 +1045,33 @@ function displayFeedback(evaluation) {
 async function loadConfig() {
   try {
     // Hent konfiguration via server
-    const response = await fetch('http://localhost:3000/api/config');
-    config = await response.json();
+    let response;
+    try {
+      response = await fetch(apiUrl('/api/config'));
+    } catch (err) {
+      response = null;
+    }
+
+    // Fallback-kriterier: intet svar, ikke OK status, eller content-type ikke JSON
+    const needsFallback = !response || !response.ok || !((response.headers.get('content-type') || '').includes('application/json'));
+    if (needsFallback) {
+      API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+      response = await fetch(apiUrl('/api/config'));
+    }
+
+    // Robust JSON parse med fallback-fejl
+    try {
+      config = await response.json();
+    } catch (e) {
+      // Hvis JSON stadig fejler, prøv Render én gang til
+      if (API_BASE !== 'https://sdcc-tale-rsbot.onrender.com') {
+        API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+        const res2 = await fetch(apiUrl('/api/config'));
+        config = await res2.json();
+      } else {
+        throw e;
+      }
+    }
     console.log('✅ Konfiguration indlæst fra server');
     // Sæt aktiv patient (pt. Mogens)
     patientConfig = (config && config.characters && config.characters.mogens) ? config.characters.mogens : null;
@@ -950,7 +1093,7 @@ async function loadConfig() {
 async function reloadConfig() {
   try {
     // Genindlæs config på serveren
-    await fetch('http://localhost:3000/api/reload-config', { method: 'POST' });
+    await fetch(apiUrl('/api/reload-config'), { method: 'POST' });
     
     // Hent den nye config
     await loadConfig();
@@ -1068,6 +1211,23 @@ document.addEventListener('DOMContentLoaded', async function() {
       startRecording();
     }
   });
+
+  // Info button functionality
+  document.getElementById('infoButton').addEventListener('click', function() {
+    showPatientInfo();
+  });
+
+  // Close modal when clicking X
+  document.getElementById('infoModalClose').addEventListener('click', function() {
+    hidePatientInfo();
+  });
+
+  // Close modal when clicking outside
+  document.getElementById('infoModal').addEventListener('click', function(event) {
+    if (event.target === this) {
+      hidePatientInfo();
+    }
+  });
   
   // Initialiser performance dashboard
   updatePerformanceDashboard();
@@ -1076,3 +1236,64 @@ document.addEventListener('DOMContentLoaded', async function() {
   console.log('📊 Alle transaktioner logges med ID og timing');
   console.log('⚡ Optimeret med parallel processing og hurtigere modeller');
 });
+
+// Patient info modal functions
+function showPatientInfo() {
+  const modal = document.getElementById('infoModal');
+  const content = document.getElementById('infoModalContent');
+  
+  if (!patientConfig) {
+    console.error('Patient config ikke tilgængelig');
+    return;
+  }
+  
+  // Build patient information HTML
+  let html = `
+    <div class="info-section">
+      <h4>Grundlæggende Information</h4>
+      <ul class="info-list">
+        <li><strong>Navn:</strong> ${patientConfig.name}</li>
+        <li><strong>Alder:</strong> ${patientConfig.age} år</li>
+        <li><strong>Sygdom:</strong> ${patientConfig.condition}</li>
+        <li><strong>BMI:</strong> ${patientConfig.health_profile.BMI}</li>
+      </ul>
+    </div>
+    
+    <div class="info-section">
+      <h4>Sundhedsprofil</h4>
+      <ul class="info-list">
+        <li><strong>Diagnose:</strong> ${patientConfig.health_profile.diagnosis_years} år</li>
+        <li><strong>HbA1c:</strong> ${patientConfig.health_profile.HbA1c}</li>
+        <li><strong>Nuværende behandling:</strong> ${patientConfig.health_profile.current_treatment.join(', ')}</li>
+        <li><strong>Tidligere behandling:</strong> ${patientConfig.health_profile.previous_treatment.join(', ')}</li>
+      </ul>
+    </div>
+    
+    <div class="info-section">
+      <h4>Symptomer</h4>
+      <ul class="info-list">
+        ${patientConfig.health_profile.symptoms.map(symptom => `<li>${symptom}</li>`).join('')}
+      </ul>
+    </div>
+    
+    <div class="info-section">
+      <h4>Komplikationer</h4>
+      <ul class="info-list">
+        ${patientConfig.health_profile.complications.map(complication => `<li>${complication}</li>`).join('')}
+      </ul>
+    </div>
+    
+    <div class="info-section">
+      <h4>Baggrund</h4>
+      <p>${patientConfig.background}</p>
+    </div>
+  `;
+  
+  content.innerHTML = html;
+  modal.style.display = 'block';
+}
+
+function hidePatientInfo() {
+  const modal = document.getElementById('infoModal');
+  modal.style.display = 'none';
+}
