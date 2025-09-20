@@ -36,7 +36,8 @@ async function loadConfig(character = 'mogens') {
     console.log(`🌐 Henter config fra: ${githubUrl}`);
     const response = await axios.get(githubUrl);
     config = response.data;
-    console.log('✅ Konfiguration indlæst fra GitHub RAW');
+    console.log(`✅ Konfiguration indlæst fra GitHub RAW: ${configFileName}`);
+    console.log('📋 Tilgængelige karakterer:', config.characters ? Object.keys(config.characters) : 'Ingen');
   } catch (error) {
     console.error('❌ Fejl ved indlæsning af konfiguration fra GitHub:', error);
     console.log('⚠️ Prøver lokal fallback for test...');
@@ -290,6 +291,8 @@ app.post('/api/speak', async (req, res) => {
       await loadConfig(character);
       currentCharacter = character;
       activeCharacterConfig = config.characters[character];
+      console.log(`[${requestId}] ✅ Karakter skiftet. Tilgængelige karakterer:`, Object.keys(config.characters));
+      console.log(`[${requestId}] 🎭 Active character config:`, activeCharacterConfig ? activeCharacterConfig.name : 'Ikke fundet');
     }
     
     const voiceSettings = activeCharacterConfig.voice_settings?.base || { stability: 0.7, similarity_boost: 0.8, use_speaker_boost: true };
@@ -345,8 +348,24 @@ app.post('/api/speak', async (req, res) => {
 // =====================
 // Config endpoint - Send konfiguration til frontend
 // =====================
-app.get('/api/config', (req, res) => {
-  res.json(config);
+app.get('/api/config', async (req, res) => {
+  try {
+    const character = req.query.character || 'mogens';
+    
+    // Load config for the requested character if different from current
+    if (character !== currentCharacter) {
+      console.log(`🔄 Config endpoint: Skifter karakter fra ${currentCharacter} til ${character}`);
+      await loadConfig(character);
+      currentCharacter = character;
+      activeCharacterConfig = config.characters[character];
+      console.log(`✅ Config endpoint: Tilgængelige karakterer:`, Object.keys(config.characters));
+    }
+    
+    res.json(config);
+  } catch (error) {
+    console.error('❌ Fejl i config endpoint:', error);
+    res.status(500).json({ error: 'Kunne ikke loade config' });
+  }
 });
 
 // =====================

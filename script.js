@@ -56,6 +56,8 @@ let configFileName = `config${activeCharacter === 'mogens' ? '' : '_' + activeCh
 
 console.log(`🎭 Aktiv karakter: ${activeCharacter}`);
 console.log(`📄 Config fil: ${configFileName}`);
+console.log(`🔍 URL search params:`, window.location.search);
+console.log(`🔍 Character parameter:`, new URLSearchParams(window.location.search).get('character'));
 
 // Funktion: Afspil velkomstlyd når siden indlæses
 function playWelcomeAudio() {
@@ -221,8 +223,18 @@ function getInitialGreetingFromConfig() {
     const prompts = patientConfig && Array.isArray(patientConfig.system_prompt)
       ? patientConfig.system_prompt
       : [];
-    const line = prompts.find(l => typeof l === 'string' && l.toLowerCase().startsWith('mogens introducerende hilsen'));
-    if (!line) return null;
+    
+    console.log(`🔍 Søger efter introducerende hilsen for karakter: ${activeCharacter}`);
+    console.log(`📋 System prompt linjer:`, prompts.length);
+    
+    const line = prompts.find(l => typeof l === 'string' && l.toLowerCase().includes('introducerende hilsen'));
+    
+    if (!line) {
+      console.log('❌ Ingen introducerende hilsen fundet i system_prompt');
+      return null;
+    }
+    
+    console.log(`✅ Fundet linje:`, line);
     // Forsøg at finde tekst i enkelte anførselstegn '...'
     const match = line.match(/'([^']+)'/);
     if (match && match[1]) return match[1].trim();
@@ -952,7 +964,7 @@ async function updateAreaByStatus(status) {
   const mogensProfile = document.querySelector('.mogens-profile');
   const mogensPortrait = document.querySelector('.mogens-portrait');
   
-  console.log(`🔍 Søger efter DOM elementer...`);
+  console.log(`🔍 Søger efter DOM elementer for karakter: ${activeCharacter}...`);
   console.log(`🔍 mogensProfile:`, mogensProfile);
   console.log(`🔍 mogensPortrait:`, mogensPortrait);
   
@@ -1372,7 +1384,7 @@ async function loadConfig() {
       // På lokal server: Prøv API først, derefter lokal config
       let response;
       try {
-        response = await fetch(apiUrl('/api/config'), { 
+        response = await fetch(apiUrl(`/api/config?character=${activeCharacter}`), { 
           signal: AbortSignal.timeout(3000) // 3 sek timeout
         });
       } catch (err) {
@@ -1579,15 +1591,22 @@ function updateUIWithConfig() {
       taskDescription.innerHTML = uiConfig.page.task_description;
     }
     
-    // Opdater Mogens' initiale status og statusbar
+    // Opdater patientens initiale status og statusbar
     const statusText = getStatusDescription(mogensStatus);
     const mogensStatusElement = document.getElementById('mogensStatus');
     if (mogensStatusElement) {
       mogensStatusElement.innerText = `${(patientConfig && patientConfig.name) || 'Patient'}s nuværende attitude: \n\n ${statusText}`;
-      ///mogensStatusElement.innerText = `Mogens' nuværende attitude: ${statusText} (Status: ${mogensStatus}/5)`;
-      console.log(`✅ Mogens status opdateret i HTML: ${statusText} (Status: ${mogensStatus}/5)`);
+      console.log(`✅ ${activeCharacter} status opdateret i HTML: ${statusText} (Status: ${mogensStatus}/5)`);
     } else {
       console.error('❌ mogensStatus element ikke fundet i updateUIWithConfig');
+    }
+    
+    // Opdater patientens billede baseret på aktiv karakter
+    const mogensPortrait = document.querySelector('.mogens-portrait');
+    if (mogensPortrait && patientConfig && patientConfig.image) {
+      mogensPortrait.src = patientConfig.image;
+      mogensPortrait.alt = patientConfig.name;
+      console.log(`✅ ${activeCharacter} billede opdateret til: ${patientConfig.image}`);
     }
     const statusFillInit = document.getElementById('statusFill');
     if (statusFillInit) {
