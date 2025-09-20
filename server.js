@@ -12,24 +12,29 @@ const path = require('path');
 let config = null;
 
 // Funktion til at hente konfiguration fra GitHub
-async function loadConfig() {
+async function loadConfig(character = 'mogens') {
+  // Bestem config fil baseret på karakter
+  const configFileName = character === 'mogens' ? 'config.json' : `config_${character}.json`;
+  
   // Tjek om vi skal bruge lokal config til test
   if (process.env.USE_LOCAL_CONFIG === 'true') {
-    console.log('🧪 Test mode: Bruger lokal config.json');
+    console.log(`🧪 Test mode: Bruger lokal ${configFileName}`);
     try {
-      const configPath = path.join(__dirname, 'config.json');
+      const configPath = path.join(__dirname, configFileName);
       config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      console.log('✅ Lokal config.json indlæst for test');
+      console.log(`✅ Lokal ${configFileName} indlæst for test`);
       return;
     } catch (error) {
-      console.error('❌ Kunne ikke indlæse lokal config.json:', error);
+      console.error(`❌ Kunne ikke indlæse lokal ${configFileName}:`, error);
       process.exit(1);
     }
   }
   
   try {
     // Hent konfiguration fra offentlig GitHub RAW URL (main)
-    const response = await axios.get('https://raw.githubusercontent.com/sdcclaeringslaboratorium1-cyber/SDCC_tale_rsbot/main/config.json');
+    const githubUrl = `https://raw.githubusercontent.com/sdcclaeringslaboratorium1-cyber/SDCC_tale_rsbot/main/${configFileName}`;
+    console.log(`🌐 Henter config fra: ${githubUrl}`);
+    const response = await axios.get(githubUrl);
     config = response.data;
     console.log('✅ Konfiguration indlæst fra GitHub RAW');
   } catch (error) {
@@ -48,8 +53,9 @@ async function loadConfig() {
   }
 }
 
-// Hent Mogens' konfiguration (vil blive sat efter loadConfig())
-let mogensConfig = null;
+// Hent aktiv karakters konfiguration (vil blive sat efter loadConfig())
+let activeCharacterConfig = null;
+let currentCharacter = 'mogens';
 
 
 
@@ -66,7 +72,7 @@ function normalizePrompt(promptValue) {
 
 // Byg samlet system-prompt til både chat og evaluering
 function buildCombinedSystemPrompt() {
-  const patientSection = normalizePrompt(mogensConfig.system_prompt) || '';
+  const patientSection = normalizePrompt(activeCharacterConfig.system_prompt) || '';
   const evaluationSection = normalizePrompt(config.evaluation.system_prompt) || '';
 
   // Afgrænsning, så chat-svar ikke formateres som evaluering
@@ -276,8 +282,18 @@ app.post('/api/speak', async (req, res) => {
   
   try {
     const text = req.body.text;
-    const voiceSettings = { stability: 0.7, similarity_boost: 0.8, use_speaker_boost: true };
-    const voiceId = mogensConfig.voice_id;
+    const character = req.body.character || currentCharacter;
+    
+    // Load config for the requested character if different from current
+    if (character !== currentCharacter) {
+      console.log(`[${requestId}] 🔄 Skifter karakter fra ${currentCharacter} til ${character}`);
+      await loadConfig(character);
+      currentCharacter = character;
+      activeCharacterConfig = config.characters[character];
+    }
+    
+    const voiceSettings = activeCharacterConfig.voice_settings?.base || { stability: 0.7, similarity_boost: 0.8, use_speaker_boost: true };
+    const voiceId = activeCharacterConfig.voice_id;
 
     console.log(`[${requestId}] 📝 Tekst til lyd: "${text}"`);
     console.log(`[${requestId}] 🎛️ Voice settings:`, voiceSettings);
@@ -349,11 +365,11 @@ app.post('/api/reload-config', async (req, res) => {
 // Start serveren
 // =====================
 async function startServer() {
-  // Indlæs konfiguration først
+  // Indlæs konfiguration først (default til mogens)
   await loadConfig();
   
-  // Sæt mogensConfig efter konfiguration er indlæst
-  mogensConfig = config.characters.mogens;
+  // Sæt activeCharacterConfig efter konfiguration er indlæst
+  activeCharacterConfig = config.characters[currentCharacter];
   
   app.listen(3000, () => {
     console.log('🚀 Server kører på http://localhost:3000');

@@ -1,0 +1,189 @@
+{
+  "mainView": {
+    "background": "images/mogens_base.png",
+    "title": "Hvad er der galt med Mogens?",
+    "infoText": "Mogens er 45 år gammel og har været træt og tørstig i flere måneder. Han har også tabt sig uden at forsøge det. Klik på de forskellige områder for at udforske og finde ud af, hvad der er galt.",
+    "hotspots": [
+      {
+        "id": "pancreas",
+        "coords": [220, 480, 60],
+        "title": "Pancreas",
+        "target": "pancreasView",
+        "description": "Klik her for at udforske pancreassen"
+      },
+      {
+        "id": "liver",
+        "coords": [400, 420, 70],
+        "title": "Lever",
+        "target": "liverView",
+        "description": "Klik her for at udforske leveren"
+      },
+      {
+        "id": "insulinpen",
+        "coords": [680, 520, 50],
+        "title": "Insulinpen",
+        "target": "insulinView",
+        "description": "Klik her for at se insulinpenen"
+      },
+      {
+        "id": "glucosemeter",
+        "coords": [780, 600, 50],
+        "title": "Blodsukkermåler",
+        "target": "glucoseView",
+        "description": "Klik her for at se blodsukkermåleren"
+      }
+    ]
+  },
+  "pancreasView": {
+    "background": "images/organ_pancreas.png",
+    "title": "Pancreas i ubalance",
+    "infoText": "Her kan du se pancreassen i detaljer. Betacellerne producerer for lidt insulin, hvilket er årsagen til Mogens' problemer. Klik på de forskellige celler for at lære mere.",
+    "hotspots": [
+      {
+        "id": "betacell1",
+        "coords": [120, 120, 35],
+        "title": "Betacelle 1",
+        "description": "Denne betacelle fungerer normalt og producerer insulin som forventet. Den er sund og aktiv."
+      },
+      {
+        "id": "betacell2",
+        "coords": [220, 160, 35],
+        "title": "Betacelle 2",
+        "description": "Denne betacelle producerer for lidt insulin. Den er begyndt at svigte og kan ikke følge med kroppens behov."
+      },
+      {
+        "id": "betacell3",
+        "coords": [320, 200, 35],
+        "title": "Betacelle 3",
+        "description": "Denne betacelle er stærkt beskadiget. Den producerer næsten ingen insulin og er ved at dø."
+      },
+      {
+        "id": "betacell4",
+        "coords": [420, 240, 35],
+        "title": "Betacelle 4",
+        "description": "Denne betacelle fungerer stadig normalt, men den kan ikke kompensere for de andre cellers svigt alene."
+      }
+    ]
+  },
+  "liverView": {
+    "background": "images/organ_liver.png",
+    "title": "Leverens rolle i blodsukkerregulering",
+    "infoText": "Leveren spiller en vigtig rolle i at opbevare og frigive glukose. Med for lidt insulin kan leveren ikke fungere optimalt. Udforsk de forskellige områder.",
+    "hotspots": [
+      {
+        "id": "glucose_storage",
+        "coords": [150, 180, 40],
+        "title": "Glukose opbevaring",
+        "description": "Leveren opbevarer glukose som glykogen. Uden tilstrækkelig insulin kan den ikke effektivt omdanne glukose til glykogen."
+      },
+      {
+        "id": "glucose_release",
+        "coords": [280, 220, 40],
+        "title": "Glukose frigivelse",
+        "description": "Når blodsukkeret falder, frigiver leveren glukose. Men uden insulin fungerer denne proces ikke korrekt."
+      },
+      {
+        "id": "fat_metabolism",
+        "coords": [180, 320, 40],
+        "title": "Fedtstofskifte",
+        "description": "Leveren producerer ketoner når den nedbryder fedt. Dette kan skabe ketoacidose hvis der ikke er nok insulin."
+      },
+      {
+        "id": "protein_synthesis",
+        "coords": [320, 280, 40],
+        "title": "Protein syntese",
+        "description": "Uden insulin kan leveren ikke effektivt syntetisere proteiner, hvilket påvirker muskelopbygning og vækst."
+      }
+    ]
+  },
+  "insulinView": {
+    "background": "images/insulin_pen.png",
+    "title": "Insulinpen - Behandlingsredskab",
+    "infoText": "Dette er Mogens' insulinpen. Den indeholder kunstig insulin der skal kompensere for det manglende insulin fra pancreassen. Udforsk de forskellige dele.",
+    "hotspots": [
+      {
+        "id": "pen_body",
+        "coords": [200, 150, 50],
+        "title": "Pen krop",
+        "description": "Hovedkroppen af insulinpenen. Den indeholder insulinampullen og mekanismen til dosering."
+      },
+      {
+        "id": "dose_selector",
+        "coords": [280, 200, 40],
+        "title": "Dosis vælger",
+        "description": "Her vælger Mogens hvor mange enheder insulin han skal injicere. Dosen afhænger af blodsukkermåling og måltider."
+      },
+      {
+        "id": "injection_button",
+        "coords": [200, 300, 35],
+        "title": "Injektions knap",
+        "description": "Når denne knap trykkes ned, injiceres den valgte dosis insulin gennem nålen."
+      },
+      {
+        "id": "needle",
+        "coords": [200, 400, 25],
+        "title": "Nål",
+        "description": "Den fine nål der injicerer insulinet under huden. Den skal skiftes efter hver brug."
+      }
+    ]
+  },
+  "glucoseView": {
+    "background": "images/glucose_meter.png",
+    "title": "Blodsukkermåler - Overvågning af behandling",
+    "infoText": "Denne blodsukkermåler hjælper Mogens med at overvåge hans blodsukker. Den er afgørende for at justere insulinbehandlingen. Udforsk de forskellige dele.",
+    "hotspots": [
+      {
+        "id": "test_strip_port",
+        "coords": [180, 200, 40],
+        "title": "Teststrip port",
+        "description": "Her indsættes teststrippen med blodprøven. Denne port aflæser glukoseniveauet i blodprøven."
+      },
+      {
+        "id": "display_screen",
+        "coords": [250, 150, 60],
+        "title": "Display skærm",
+        "description": "Her vises blodsukkermålingen i mmol/L. Normal værdi er mellem 4-7 mmol/L når man er fastende."
+      },
+      {
+        "id": "memory_button",
+        "coords": [320, 220, 30],
+        "title": "Hukommelses knap",
+        "description": "Denne knap giver adgang til tidligere målinger, så Mogens kan følge udviklingen over tid."
+      },
+      {
+        "id": "lancing_device",
+        "coords": [150, 350, 45],
+        "title": "Prikke enhed",
+        "description": "Denne enhed laver et lille snit i fingeren så Mogens kan få en bloddråbe til testen."
+      }
+    ]
+  },
+  "settings": {
+    "autoPlay": false,
+    "enableTooltips": true,
+    "enableKeyboardNavigation": true,
+    "enableTouchSupport": true,
+    "showDiscoveryAnimation": true,
+    "defaultView": "mainView"
+  },
+  "metadata": {
+    "title": "Mikromedicinsk Escape Room",
+    "description": "Interaktiv læringsapplikation om diabetes og blodsukkerregulering",
+    "version": "1.0.0",
+    "created": "2024",
+    "author": "Medicinsk Læringsteam",
+    "targetAudience": "Medicinstuderende og sundhedspersonale",
+    "learningObjectives": [
+      "Forstå pancreasens rolle i blodsukkerregulering",
+      "Lær om insulinets funktion og betydning",
+      "Forstå behandling med insulinpen",
+      "Lær om blodsukkermåling og overvågning"
+    ]
+  }
+}
+
+
+
+
+
+

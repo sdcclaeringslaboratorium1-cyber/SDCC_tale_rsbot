@@ -3,6 +3,8 @@ let dialog = [];
 
 // Holder styr på Mogens' nuværende status (1-5 skala)
 let mogensStatus = 1; // Starter med status 1 (meget kritisk/lukket)
+let currentStatusClass = null; // Holder styr på nuværende status-klasse
+let currentImagePath = null; // Holder styr på nuværende billede-sti
 
 // Tale-til-tekst variabler
 let recognition;
@@ -33,6 +35,28 @@ function apiUrl(path) {
   return (API_BASE ? API_BASE : '') + path;
 }
 
+// Funktion: Hent aktiv karakter fra URL parameter
+function getActiveCharacter() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const character = urlParams.get('character');
+  
+  // Validér at karakteren findes
+  const validCharacters = ['mogens', 'bodil'];
+  if (character && validCharacters.includes(character.toLowerCase())) {
+    return character.toLowerCase();
+  }
+  
+  // Default til mogens hvis ingen eller ugyldig parameter
+  return 'mogens';
+}
+
+// Globale variabler for aktiv karakter
+let activeCharacter = getActiveCharacter();
+let configFileName = `config${activeCharacter === 'mogens' ? '' : '_' + activeCharacter}.json`;
+
+console.log(`🎭 Aktiv karakter: ${activeCharacter}`);
+console.log(`📄 Config fil: ${configFileName}`);
+
 // Funktion: Afspil velkomstlyd når siden indlæses
 function playWelcomeAudio() {
   try {
@@ -43,7 +67,7 @@ function playWelcomeAudio() {
     }
     
     // Opret en ny Audio instans for velkomstlyden
-    const welcomeFile = (patientConfig && patientConfig.audio_files?.welcome) || config.characters.mogens.audio_files.welcome;
+    const welcomeFile = (patientConfig && patientConfig.audio_files?.welcome) || config.characters[activeCharacter].audio_files.welcome;
     welcomeAudio = new Audio(welcomeFile);
     
     // Sæt volumen til et behageligt niveau (0.0 til 1.0)
@@ -94,7 +118,7 @@ function playWaitingAudio() {
     }
     
     // Vælg en tilfældig ventelyd fra konfigurationen
-    const waitingFiles = (patientConfig && patientConfig.audio_files?.waiting) || config.characters.mogens.audio_files.waiting;
+    const waitingFiles = (patientConfig && patientConfig.audio_files?.waiting) || config.characters[activeCharacter].audio_files.waiting;
     const randomIndex = Math.floor(Math.random() * waitingFiles.length);
     const waitAudioPath = waitingFiles[randomIndex];
     
@@ -337,14 +361,62 @@ async function sendMessage() {
     console.log(`[${requestId}] 🤖 Sender til OpenAI API...`);
     const openaiStartTime = Date.now();
     
-    const res = await fetch(apiUrl('/api/chat'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        message: userMessage, 
-        dialog
-      })
-    });
+    // Tjek om vi er på FTP deployment (samme logik som i loadConfig)
+    const isLocalServer = window.location.protocol === 'file:' || 
+                         window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1';
+
+    let res;
+    if (isLocalServer) {
+      // På lokal server: Prøv lokal API først, derefter Render
+      try {
+        res = await fetch(apiUrl('/api/chat'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            message: userMessage, 
+            dialog
+          }),
+          signal: AbortSignal.timeout(10000) // 10 sek timeout
+        });
+      } catch (fetchErr) {
+        console.log(`[${requestId}] ⚠️ Lokal server ikke tilgængelig, prøver Render...`);
+        if (!API_BASE) {
+          API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+          try {
+            res = await fetch(apiUrl('/api/chat'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                message: userMessage, 
+                dialog
+              }),
+              signal: AbortSignal.timeout(15000) // 15 sek timeout for Render
+            });
+          } catch (renderErr) {
+            console.error(`[${requestId}] ❌ Render server også utilgængelig:`, renderErr);
+            throw renderErr;
+          }
+        } else {
+          throw fetchErr;
+        }
+      }
+    } else {
+      // På FTP: Gå direkte til Render server
+      console.log(`[${requestId}] 🌐 FTP deployment detekteret, bruger Render til chat...`);
+      if (!API_BASE) {
+        API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+      }
+      res = await fetch(apiUrl('/api/chat'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          message: userMessage, 
+          dialog
+        }),
+        signal: AbortSignal.timeout(15000) // 15 sek timeout for Render
+      });
+    }
     
     const openaiTime = Date.now() - openaiStartTime;
     console.log(`[${requestId}] ✅ OpenAI API svaret på ${openaiTime}ms`);
@@ -409,7 +481,7 @@ async function sendMessage() {
             console.log(`🔧 Clamper status fra ${newStatus} til ${clamped} (maks ±1 fra ${mogensStatus})`);
           }
           console.log(`🔍 Kalder updateMogensStatusFromEvaluation...`);
-          updateMogensStatusFromEvaluation(clamped, newAttitude);
+          await updateMogensStatusFromEvaluation(clamped, newAttitude);
         } else {
           console.warn(`⚠️ Ingen gyldig status fundet i evaluation: ${newStatus}`);
         }
@@ -450,13 +522,62 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
   try {
     console.log(`[${requestId}] 🔊 Starter ElevenLabs lyd generering...`);
 
-    const res = await fetch(apiUrl('/api/speak'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        text
-      })
-    });
+    // Tjek om vi er på FTP deployment (samme logik som i loadConfig)
+    const isLocalServer = window.location.protocol === 'file:' || 
+                         window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1';
+
+    let res;
+    if (isLocalServer) {
+      // På lokal server: Prøv lokal API først, derefter Render
+      try {
+        res = await fetch(apiUrl('/api/speak'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            text,
+            character: activeCharacter
+          }),
+          signal: AbortSignal.timeout(15000) // 15 sek timeout for lyd
+        });
+      } catch (fetchErr) {
+        console.log(`[${requestId}] ⚠️ Lokal server ikke tilgængelig til lyd, prøver Render...`);
+        if (!API_BASE) {
+          API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+          try {
+            res = await fetch(apiUrl('/api/speak'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                text,
+                character: activeCharacter
+              }),
+              signal: AbortSignal.timeout(20000) // 20 sek timeout for Render lyd
+            });
+          } catch (renderErr) {
+            console.error(`[${requestId}] ❌ Render server også utilgængelig til lyd:`, renderErr);
+            throw renderErr;
+          }
+        } else {
+          throw fetchErr;
+        }
+      }
+    } else {
+      // På FTP: Gå direkte til Render server
+      console.log(`[${requestId}] 🌐 FTP deployment detekteret, bruger Render til lyd...`);
+      if (!API_BASE) {
+        API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+      }
+      res = await fetch(apiUrl('/api/speak'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          text,
+          character: activeCharacter
+        }),
+        signal: AbortSignal.timeout(20000) // 20 sek timeout for Render lyd
+      });
+    }
     
     if (res.ok) {
       const audioBlob = await res.blob();
@@ -491,7 +612,10 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
         audioPlayer.onended = function() {
           const promptInput = document.getElementById('prompt');
           if (promptInput) {
-            promptInput.focus();
+            // Undgå auto-fokus på mobile enheder for at forhindre zoom
+            if (!isMobileDevice()) {
+              promptInput.focus();
+            }
           }
           audioPlayer.onended = null;
         };
@@ -586,12 +710,30 @@ function hideInitialLoader() {
   }
 }
 
+// Helper: Detekter mobil/tablet (simple heuristik)
+function isMobileDevice() {
+  try {
+    const ua = navigator.userAgent || navigator.vendor || window.opera;
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    return /android|iphone|ipad|ipod|iemobile|opera mini/i.test(ua) || isTouch;
+  } catch (e) {
+    return false;
+  }
+}
+
 // Funktion: Opdater patientens status baseret på evaluation feedback
-function updateMogensStatusFromEvaluation(newStatus, newAttitude = null) {
+async function updateMogensStatusFromEvaluation(newStatus, newAttitude = null) {
   console.log(`🔍 updateMogensStatusFromEvaluation kaldt med: newStatus=${newStatus}, newAttitude=${newAttitude}`);
   
   if (newStatus >= 1 && newStatus <= 5) {
     const oldStatus = mogensStatus;
+    
+    // Tjek om status faktisk ændrer sig
+    if (newStatus === oldStatus) {
+      console.log(`ℹ️ Status ${newStatus} er uændret - ingen opdatering nødvendig`);
+      return;
+    }
+    
     mogensStatus = newStatus;
     
     // Log status-ændringen
@@ -606,7 +748,7 @@ function updateMogensStatusFromEvaluation(newStatus, newAttitude = null) {
     console.log(`🔍 Status tekst: ${statusText}`);
     
     if (mogensStatusElement) {
-      mogensStatusElement.innerText = `${(patientConfig && patientConfig.name) || 'Patient'}'s nuværende attitude: ${statusText} (Status: ${mogensStatus}/5)`;
+      mogensStatusElement.innerText = `${(patientConfig && patientConfig.name) || 'Patient'}s nuværende attitude: \n\n ${statusText}`;
       console.log(`✅ Mogens status tekst opdateret`);
     } else {
       console.error('❌ mogensStatus element ikke fundet');
@@ -633,7 +775,7 @@ function updateMogensStatusFromEvaluation(newStatus, newAttitude = null) {
     updateStatusBarColor(mogensStatus);
     
     // Opdater område baseret på status
-    updateAreaByStatus(mogensStatus);
+    await updateAreaByStatus(mogensStatus);
   } else {
     console.warn(`⚠️ Ugyldig status: ${newStatus} (skal være 1-5)`);
   }
@@ -780,8 +922,33 @@ function showEndConversationPopup(patientName) {
   document.body.appendChild(overlay);
 }
 
+// Funktion: Skift billede med fade out/in effekt
+function changeImageWithFade(newImagePath, imageElement, fadeDuration = 500) {
+  return new Promise((resolve) => {
+    if (!imageElement || !newImagePath) {
+      resolve();
+      return;
+    }
+    
+    // Fade out
+    imageElement.style.transition = `opacity ${fadeDuration/2}ms ease-in-out`;
+    imageElement.style.opacity = '0';
+    
+    setTimeout(() => {
+      // Skift billede
+      imageElement.src = newImagePath;
+      
+      // Fade in
+      setTimeout(() => {
+        imageElement.style.opacity = '1';
+        setTimeout(resolve, fadeDuration/2);
+      }, 50); // Kort forsinkelse for at sikre billedet er indlæst
+    }, fadeDuration/2);
+  });
+}
+
 // Funktion: Opdater område baseret på Mogens' status
-function updateAreaByStatus(status) {
+async function updateAreaByStatus(status) {
   const mogensProfile = document.querySelector('.mogens-profile');
   const mogensPortrait = document.querySelector('.mogens-portrait');
   
@@ -794,15 +961,49 @@ function updateAreaByStatus(status) {
     return;
   }
   
-  if (!mogensPortrait) {
-    console.warn('⚠️ .mogens-portrait element ikke fundet');
+  const newStatusClass = `status-${status}`;
+  const statusImages = (patientConfig && patientConfig.status_images) || 
+                      (config && config.characters && config.characters[activeCharacter] && config.characters[activeCharacter].status_images);
+  const newImagePath = statusImages && statusImages[status.toString()] ? statusImages[status.toString()] : null;
+  
+  // Tjek om status-klasse ændrer sig
+  if (currentStatusClass === newStatusClass) {
+    console.log(`ℹ️ Status-klasse ${newStatusClass} er uændret`);
+  } else {
+    // Fjern alle status-klasser
+    mogensProfile.classList.remove('status-1', 'status-2', 'status-3', 'status-4', 'status-5');
+    
+    // Tilføj ny status-klasse
+    mogensProfile.classList.add(newStatusClass);
+    currentStatusClass = newStatusClass;
+    
+    console.log(`🔄 Status-klasse ændret til: ${newStatusClass}`);
   }
   
-  // Fjern alle status-klasser
-  mogensProfile.classList.remove('status-1', 'status-2', 'status-3', 'status-4', 'status-5');
-  
-  // Tilføj ny status-klasse
-  mogensProfile.classList.add(`status-${status}`);
+  // Tjek om billede ændrer sig
+  if (mogensPortrait && newImagePath) {
+    if (currentImagePath === newImagePath) {
+      console.log(`ℹ️ Billede ${newImagePath} er uændret - ingen skift nødvendig`);
+    } else {
+      console.log(`🖼️ Skifter billede fra ${currentImagePath} til: ${newImagePath}`);
+      
+      try {
+        await changeImageWithFade(newImagePath, mogensPortrait, 600);
+        currentImagePath = newImagePath;
+        console.log(`✅ Billede skiftet til status ${status} med fade-effekt`);
+      } catch (error) {
+        console.error('❌ Fejl ved skift af billede:', error);
+        // Fallback: skift direkte uden fade
+        mogensPortrait.src = newImagePath;
+        currentImagePath = newImagePath;
+      }
+    }
+  } else if (mogensPortrait && !newImagePath) {
+    console.warn(`⚠️ Ingen billede fundet for status ${status}`);
+    console.warn(`⚠️ Tilgængelige keys:`, statusImages ? Object.keys(statusImages) : 'undefined');
+  } else {
+    console.warn('⚠️ .mogens-portrait element ikke fundet');
+  }
   
   console.log(`🖼️ Opdateret område til status ${status}`);
   console.log(`🖼️ Mogens profile klasser:`, mogensProfile.className);
@@ -825,7 +1026,20 @@ function clampStatusStep(currentStatus, proposedStatus) {
 
 // Funktion: Få beskrivelse af status
 function getStatusDescription(status) {
-  const descriptions = config.characters.mogens.status_descriptions;
+  // Først prøv patientConfig, derefter fallback til config.characters
+  let descriptions = null;
+  
+  if (patientConfig && patientConfig.status_descriptions) {
+    descriptions = patientConfig.status_descriptions;
+  } else if (config && config.characters && config.characters[activeCharacter] && config.characters[activeCharacter].status_descriptions) {
+    descriptions = config.characters[activeCharacter].status_descriptions;
+  }
+  
+  if (!descriptions) {
+    console.warn(`⚠️ Ingen status_descriptions fundet for karakter: ${activeCharacter}`);
+    return "Ukendt status";
+  }
+  
   return descriptions[status] || "Ukendt status";
 }
 
@@ -860,11 +1074,53 @@ async function evaluateUserMessageInContext(userMessage, mogensReply, conversati
     
     console.log(`[${requestId}] 🔍 Sender til evaluation API:`, requestBody);
     
-    const res = await fetch(apiUrl('/api/evaluate'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
+    // Tjek om vi er på FTP deployment (samme logik som i loadConfig)
+    const isLocalServer = window.location.protocol === 'file:' || 
+                         window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1';
+
+    let res;
+    if (isLocalServer) {
+      // På lokal server: Prøv lokal API først, derefter Render
+      try {
+        res = await fetch(apiUrl('/api/evaluate'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(10000) // 10 sek timeout for evaluering
+        });
+      } catch (fetchErr) {
+        console.log(`[${requestId}] ⚠️ Lokal server ikke tilgængelig til evaluering, prøver Render...`);
+        if (!API_BASE) {
+          API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+          try {
+            res = await fetch(apiUrl('/api/evaluate'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(requestBody),
+              signal: AbortSignal.timeout(15000) // 15 sek timeout for Render evaluering
+            });
+          } catch (renderErr) {
+            console.error(`[${requestId}] ❌ Render server også utilgængelig til evaluering:`, renderErr);
+            throw renderErr;
+          }
+        } else {
+          throw fetchErr;
+        }
+      }
+    } else {
+      // På FTP: Gå direkte til Render server
+      console.log(`[${requestId}] 🌐 FTP deployment detekteret, bruger Render til evaluering...`);
+      if (!API_BASE) {
+        API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+      }
+      res = await fetch(apiUrl('/api/evaluate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(15000) // 15 sek timeout for Render evaluering
+      });
+    }
     
     if (res.ok) {
       const data = await res.json();
@@ -894,7 +1150,30 @@ function updateChatDisplay() {
       // Tilføj score-kugle efter brugerens beskeder
       const score = extractScoreFromFeedback(msg.feedback);
       const scoreClass = getScoreClass(score);
-      chatHTML += `<span class="user-message">${msg.sender}: ${msg.text}</span><span class="score-bubble ${scoreClass} clickable" data-feedback="${msg.feedback}" title="Klik for at se feedback (Score: ${score}/10)">${score}</span>\n\n`;
+      
+      // Tjek om denne besked er markeret
+      const isHighlighted = msg.highlighted || false;
+      const highlightClass = isHighlighted ? 'user-message-highlighted' : '';
+      
+      // Bestem styling baseret på score
+      let style = '';
+      if (isHighlighted) {
+        let backgroundColor = '';
+        if (scoreClass === 'score-excellent') {
+          backgroundColor = '#059669'; // Mørkegrøn for 8-10
+        } else if (scoreClass === 'score-good') {
+          backgroundColor = '#10b981'; // Grøn for 6-7
+        } else if (scoreClass === 'score-average') {
+          backgroundColor = '#f59e0b'; // Orange for 4-5
+        } else if (scoreClass === 'score-poor') {
+          backgroundColor = '#ef4444'; // Rød for 1-3
+        }
+        
+        style = `style="background: ${backgroundColor}; color: white; padding: 0.5rem 0.75rem; border-radius: 8px; border-left: 3px solid ${backgroundColor}; transition: all 0.3s ease;"`;
+      }
+      
+      chatHTML += `<span class="user-message ${highlightClass}" ${style}>${msg.sender}: ${msg.text}</span><span class="score-bubble ${scoreClass} clickable" data-feedback="${msg.feedback}" title="Klik for at se feedback (Score: ${score}/10)">${score}</span>\n\n`;
+      // Debug: console.log('🔍 Tilføjet HTML for brugerbesked med score:', score, 'klasse:', scoreClass, 'highlighted:', isHighlighted);
     } else if (msg.sender === "Dig") {
       // Brugerbesked uden feedback endnu
       chatHTML += `<span class="user-message">${msg.sender}: ${msg.text}</span><span class="score-bubble loading" title="Venter på ${(patientConfig && patientConfig.name) || 'patientens'} svar...">⏳</span>\n\n`;
@@ -905,6 +1184,7 @@ function updateChatDisplay() {
   });
   
   chatMessages.innerHTML = chatHTML;
+  // Debug: console.log('🔍 updateChatDisplay - HTML sat, antal brugerbeskeder med feedback:', dialog.filter(m => m.sender === "Dig" && m.feedback).length);
   
   // Tilføj click event listeners til score-kuglerne
   addScoreBubbleClickListeners();
@@ -927,11 +1207,15 @@ function getScoreClass(score) {
 // Funktion: Tilføj click event listeners til score-kuglerne
 function addScoreBubbleClickListeners() {
   const scoreBubbles = document.querySelectorAll('.score-bubble.clickable');
+  // Debug: console.log('🔍 addScoreBubbleClickListeners kaldt, fundet', scoreBubbles.length, 'score-bobler');
   
   scoreBubbles.forEach((bubble) => {
     bubble.addEventListener('click', function() {
+      // Debug: console.log('🔍 Score-boble klikket:', this);
       const feedback = this.getAttribute('data-feedback');
       if (feedback) {
+        // Debug: console.log('🔍 Feedback fundet:', feedback);
+        
         // Fjern aktiv klasse fra alle andre kugler
         scoreBubbles.forEach(b => b.classList.remove('active'));
         
@@ -962,15 +1246,46 @@ function addScoreBubbleClickListeners() {
 
 // Funktion: Markér brugerens tekst når score-kugle klikkes
 function highlightUserMessage(clickedBubble) {
-  // Fjern tidligere markeringer
-  const chatMessages = document.getElementById('response');
-  const highlightedMessages = chatMessages.querySelectorAll('.user-message-highlighted');
-  highlightedMessages.forEach(msg => msg.classList.remove('user-message-highlighted'));
+  // Debug: console.log('🔍 highlightUserMessage kaldt med:', clickedBubble);
   
-  // Find og markér den klikkede besked
-  const userMessage = clickedBubble.previousElementSibling;
+  // Fjern alle tidligere markeringer fra dialog arrayet
+  dialog.forEach(msg => {
+    if (msg.sender === "Dig") {
+      msg.highlighted = false;
+    }
+  });
+  
+  // Find den klikkede besked - prøv forskellige metoder
+  let userMessage = clickedBubble.previousElementSibling;
+  
+  // Hvis previousElementSibling ikke virker, prøv at finde parent og søg
+  if (!userMessage || !userMessage.classList.contains('user-message')) {
+    const parent = clickedBubble.parentElement;
+    if (parent) {
+      const allSpans = parent.querySelectorAll('span');
+      for (let i = 0; i < allSpans.length; i++) {
+        if (allSpans[i] === clickedBubble && i > 0) {
+          userMessage = allSpans[i - 1];
+          break;
+        }
+      }
+    }
+  }
+  
   if (userMessage && userMessage.classList.contains('user-message')) {
-    userMessage.classList.add('user-message-highlighted');
+    // Find den tilsvarende besked i dialog arrayet
+    const messageText = userMessage.textContent;
+    const correspondingMessage = dialog.find(msg => 
+      msg.sender === "Dig" && msg.text && messageText.includes(msg.text)
+    );
+    
+    if (correspondingMessage) {
+      // Markér beskeden i dialog arrayet
+      correspondingMessage.highlighted = true;
+      
+      // Opdater chat display for at vise markeringen
+      updateChatDisplay();
+    }
   }
 }
 
@@ -1045,56 +1360,182 @@ function displayFeedback(evaluation) {
 // Funktion: Hent konfiguration fra server
 async function loadConfig() {
   try {
-    // Hent konfiguration via server
-    let response;
-    try {
-      response = await fetch(apiUrl('/api/config'));
-    } catch (err) {
-      response = null;
-    }
-
-    // Fallback-kriterier: intet svar, ikke OK status, eller content-type ikke JSON
-    const needsFallback = !response || !response.ok || !((response.headers.get('content-type') || '').includes('application/json'));
-    if (needsFallback) {
-      API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
-      response = await fetch(apiUrl('/api/config'));
-    }
-
-    // Robust JSON parse med fallback-fejl
-    try {
-      config = await response.json();
-    } catch (e) {
-      // Hvis JSON stadig fejler, prøv Render én gang til
-      if (API_BASE !== 'https://sdcc-tale-rsbot.onrender.com') {
-        API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
-        const res2 = await fetch(apiUrl('/api/config'));
-        config = await res2.json();
-      } else {
-        throw e;
+    // For FTP deployment: Prøv først lokal config.json direkte
+    console.log('🔄 Indlæser konfiguration...');
+    
+    // Tjek om vi er på en lokal server eller FTP
+    const isLocalServer = window.location.protocol === 'file:' || 
+                         window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1';
+    
+    if (isLocalServer) {
+      // På lokal server: Prøv API først, derefter lokal config
+      let response;
+      try {
+        response = await fetch(apiUrl('/api/config'), { 
+          signal: AbortSignal.timeout(3000) // 3 sek timeout
+        });
+      } catch (err) {
+        console.log('Lokal server ikke tilgængelig, bruger lokal config...');
+        response = null;
       }
+
+      if (!response || !response.ok) {
+        await loadLocalConfig();
+        return;
+      }
+
+      try {
+        config = await response.json();
+        console.log('✅ Konfiguration indlæst fra lokal server');
+      } catch (e) {
+        console.log('JSON parse fejlede, bruger lokal config...');
+        await loadLocalConfig();
+        return;
+      }
+    } else {
+      // På FTP: Brug direkte lokal config.json
+      console.log('🌐 FTP deployment detekteret, bruger lokal config...');
+      await loadLocalConfig();
+      return;
     }
-    console.log('✅ Konfiguration indlæst fra server');
-    // Sæt aktiv patient (pt. Mogens)
-    patientConfig = (config && config.characters && config.characters.mogens) ? config.characters.mogens : null;
+    
+    // Sæt aktiv patient
+    patientConfig = (config && config.characters && config.characters[activeCharacter]) ? config.characters[activeCharacter] : null;
+    
+    console.log(`🎭 Søger efter karakter: ${activeCharacter}`);
+    console.log(`📋 Tilgængelige karakterer:`, config.characters ? Object.keys(config.characters) : 'Ingen');
+    console.log(`👤 PatientConfig sat:`, patientConfig ? patientConfig.name : 'Ikke fundet');
+    
+    console.log('✅ Konfiguration og status_images indlæst korrekt');
     
     // Opdater UI med konfigurationen
     updateUIWithConfig();
     
     // Sæt initial status - vent lidt for at sikre DOM er klar
-    setTimeout(() => {
-      updateAreaByStatus(mogensStatus);
+    setTimeout(async () => {
+      // Initialiser tracking variabler
+      currentStatusClass = `status-${mogensStatus}`;
+      const statusImages = (patientConfig && patientConfig.status_images) || 
+                          (config && config.characters && config.characters[activeCharacter] && config.characters[activeCharacter].status_images);
+      currentImagePath = statusImages && statusImages[mogensStatus.toString()] ? statusImages[mogensStatus.toString()] : null;
+      
+      await updateAreaByStatus(mogensStatus);
       console.log(`📊 ${(patientConfig && patientConfig.name) || 'Patient'}'s initiale status: ${mogensStatus}/5`);
     }, 500);
   } catch (error) {
     console.error('❌ Fejl ved indlæsning af konfiguration:', error);
+    console.log('Forsøger at bruge lokal config...');
+    await loadLocalConfig();
+  }
+}
+
+// Funktion: Indlæs lokal config fil som fallback
+async function loadLocalConfig() {
+  try {
+    console.log(`📁 Indlæser lokal ${configFileName}...`);
+    const response = await fetch(`./${configFileName}`, {
+      signal: AbortSignal.timeout(5000) // 5 sek timeout
+    });
+    
+    if (response.ok) {
+      config = await response.json();
+      console.log('✅ Lokal konfiguration indlæst');
+      
+      // Sæt aktiv patient
+      patientConfig = (config && config.characters && config.characters[activeCharacter]) ? config.characters[activeCharacter] : null;
+      
+      console.log(`🎭 Søger efter karakter: ${activeCharacter}`);
+      console.log(`📋 Tilgængelige karakterer:`, config.characters ? Object.keys(config.characters) : 'Ingen');
+      console.log(`👤 PatientConfig sat:`, patientConfig ? patientConfig.name : 'Ikke fundet');
+      
+      console.log('✅ Lokal konfiguration og status_images indlæst korrekt');
+      
+      // Opdater UI med konfigurationen
+      updateUIWithConfig();
+      
+      // Sæt initial status - vent lidt for at sikre DOM er klar
+      setTimeout(async () => {
+        // Initialiser tracking variabler
+        currentStatusClass = `status-${mogensStatus}`;
+        const statusImages = (patientConfig && patientConfig.status_images) || 
+                            (config && config.characters && config.characters[activeCharacter] && config.characters[activeCharacter].status_images);
+        currentImagePath = statusImages && statusImages[mogensStatus.toString()] ? statusImages[mogensStatus.toString()] : null;
+        
+        await updateAreaByStatus(mogensStatus);
+        console.log(`📊 ${(patientConfig && patientConfig.name) || 'Patient'}'s initiale status: ${mogensStatus}/5`);
+      }, 100); // Reduceret fra 500ms til 100ms
+    } else {
+      throw new Error(`Lokal ${configFileName} ikke fundet`);
+    }
+  } catch (error) {
+    console.error('❌ Fejl ved indlæsning af lokal konfiguration:', error);
+    console.log('🔄 Bruger minimal fallback konfiguration...');
+    
+    // Bruger en minimal fallback config
+    config = {
+      characters: {
+        mogens: {
+          name: "Mogens Mortensen",
+          audio_files: {
+            welcome: "audio/mogens_velkomst.mp3",
+            waiting: ["audio/mogens_ny_wait1.mp3", "audio/mogens_ny_wait2.mp3"]
+          },
+          status_descriptions: {
+            "1": "Meget kritisk overfor dig",
+            "2": "Kritisk og tøvende", 
+            "3": "Lidt åben og spørgende",
+            "4": "Tæt på accept og samarbejdsvillig",
+            "5": "Positiv og indvilger i målinger"
+          },
+          status_images: {
+            "1": "images/mogens_lvl1.png",
+            "2": "images/mogens_lvl2.png", 
+            "3": "images/mogens_lvl3.png",
+            "4": "images/mogens_lvl4.png",
+            "5": "images/mogens_lvl5.png"
+          }
+        }
+      },
+      audio: {
+        welcome_volume: 0.8,
+        waiting_volume: 0.6,
+        fade_out_duration: 300,
+        fade_out_steps: 10,
+        play_delay: 300
+      },
+      ui: {
+        title: "Chat med Mogens – SDCC Læring",
+        header: { title: "SDCC Læring", subtitle: "Steno Diabetes Center Copenhagen" }
+      }
+    };
+    
+    patientConfig = config.characters[activeCharacter];
+    updateUIWithConfig();
+    
+    // Sæt initial status hurtigere for fallback
+    setTimeout(async () => {
+      currentStatusClass = `status-${mogensStatus}`;
+      currentImagePath = config.characters[activeCharacter].status_images[mogensStatus.toString()];
+      await updateAreaByStatus(mogensStatus);
+      console.log(`📊 ${patientConfig.name}'s initiale status: ${mogensStatus}/5 (fallback)`);
+    }, 100);
+    
+    console.log('⚠️ Bruger minimal fallback konfiguration');
   }
 }
 
 // Funktion: Genindlæs konfiguration (hot reload)
 async function reloadConfig() {
   try {
-    // Genindlæs config på serveren
-    await fetch(apiUrl('/api/reload-config'), { method: 'POST' });
+    // Genindlæs config på serveren (kun hvis server er tilgængelig)
+    if (API_BASE) {
+      try {
+        await fetch(apiUrl('/api/reload-config'), { method: 'POST' });
+      } catch (err) {
+        console.log('Server reload ikke tilgængelig, genindlæser lokal config...');
+      }
+    }
     
     // Hent den nye config
     await loadConfig();
@@ -1142,7 +1583,8 @@ function updateUIWithConfig() {
     const statusText = getStatusDescription(mogensStatus);
     const mogensStatusElement = document.getElementById('mogensStatus');
     if (mogensStatusElement) {
-      mogensStatusElement.innerText = `Mogens' nuværende attitude: ${statusText} (Status: ${mogensStatus}/5)`;
+      mogensStatusElement.innerText = `${(patientConfig && patientConfig.name) || 'Patient'}s nuværende attitude: \n\n ${statusText}`;
+      ///mogensStatusElement.innerText = `Mogens' nuværende attitude: ${statusText} (Status: ${mogensStatus}/5)`;
       console.log(`✅ Mogens status opdateret i HTML: ${statusText} (Status: ${mogensStatus}/5)`);
     } else {
       console.error('❌ mogensStatus element ikke fundet i updateUIWithConfig');
@@ -1232,6 +1674,30 @@ document.addEventListener('DOMContentLoaded', async function() {
   
   // Initialiser performance dashboard
   updatePerformanceDashboard();
+  
+  // Global click listener til at fjerne tekst-markering når man klikker på noget andet
+  document.addEventListener('click', function(event) {
+    // Tjek om klikket element er en score-boble
+    if (!event.target.classList.contains('score-bubble')) {
+      // Fjern alle markeringer fra dialog arrayet
+      let hasHighlightedMessages = false;
+      dialog.forEach(msg => {
+        if (msg.sender === "Dig" && msg.highlighted) {
+          msg.highlighted = false;
+          hasHighlightedMessages = true;
+        }
+      });
+      
+      // Opdater chat display hvis der var markeringer
+      if (hasHighlightedMessages) {
+        updateChatDisplay();
+      }
+      
+      // Fjern aktiv klasse fra score-bobler
+      const scoreBubbles = document.querySelectorAll('.score-bubble.clickable');
+      scoreBubbles.forEach(bubble => bubble.classList.remove('active'));
+    }
+  });
   
   console.log('🚀 SDCC Talebot initialiseret med performance tracking');
   console.log('📊 Alle transaktioner logges med ID og timing');

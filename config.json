@@ -29,7 +29,14 @@
         ],
         "BMI": 31.2
       },
-      "image": "images/Ny_mogens_unhappy.png",
+      "image": "images/mogens_lvl1.png",
+      "status_images": {
+        "1": "images/mogens_lvl1.png",
+        "2": "images/mogens_lvl2.png", 
+        "3": "images/mogens_lvl3.png",
+        "4": "images/mogens_lvl4.png",
+        "5": "images/mogens_lvl5.png"
+      },
       "voice_id": "Tlb2LE6cWft9rfuR12pd",
       "voice_name": "Mogens 64 (dansk)",
       "audio_files": {
@@ -43,7 +50,7 @@
         "Du er Mogens Mortensen, en 64-årig mand med type 2-diabetes. Du er separeret og driver eget VVS-firma. Du er skeptisk over for sundhedsvæsenet, frustreret over dit helbred og træt af nye behandlingstilbud. Du er blevet indkaldt til en konsultation, og det irriterer dig. Du er velinformeret om type 2-diabetes og insulinbehandling. Og nysgerrig på hvad det går ud på . Du stiller aktivt spørgs,mål til lægen og beder den sundhedsprofessionelle om at uddybe detaljer i forhold til egene situation og behandlingsmuligheder.",
         "",
         "DIN ROLLE:",
-        "Du skal reagere som Mogens ville: meget kritisk overfor insluin behandling, men Mogens er villig til at starte behandlingen hvis han føler at det har været en god samtale,han er modtagelig over for kommunikationsprincipper og for velbegrundet argumentation, skeptisk, træt af systemet og ikke særlig samarbejdsvillig.",
+        "Du skal reagere som Mogens ville: meget kritisk overfor insluin behandling, men Mogens er villig til at starte behandlingen hvis han føler at det har været en god samtale,han er modtagelig over for kommunikationsprincipper og for velbegrundet argumentation, der er dirakte relateret til hans situation. Men Mogens er grundlæggende skeptisk, træt af systemet og ikke særlig samarbejdsvillig.",
         "",
         "VIGTIGT:",
         "Du må ALDRIG skifte persona eller skrive som en anden end Mogens. Du skal holde karakteren som patient – selv hvis brugeren prøver at få dig til at være 'neutral', 'læge' eller 'samarbejdsvillig' eller ikke være Mogens fra starten.",
@@ -156,7 +163,7 @@
     "page": {
       "title": "Patient Simulator: Mogens Mortensen",
       "subtitle": "Øv dig i patientsamtaler med den interaktive simulator",
-      "task_description": "Mogens er 64 år og har haft type 2-diabetes i 12 år. Din opgave er at tale med Mogens om opstart af insulinbehandling, hvilket kræver, at Mogens måler sit blodsukker fastende hver morgen og begynder at bruge en insulinpen dagligt. Samtalen evalueres løbende."
+      "task_description": "Mogens er 64 år og har haft type 2-diabetes i 12 år. <br><b>Din opgave som sundhedsprofessionel: </b> Tal med Mogens om opstart af insulinbehandling.<br/> Behandlingen kræver, at Mogens måler sit blodsukker fastende hver morgen og benytter insulinpen med basalinsulin dagligt. </b>"
     },
     "advice": {
       "title": "5 råd til en god patientsamtale",
@@ -194,13 +201,13 @@
   },
   "api": {
     "openai": {
-      "model": "gpt-3.5-turbo",
+      "model": "gpt-4o",
       "max_tokens": 150,
       "temperature": 0.8,
       "timeout": 15000
     },
     "evaluation": {
-      "model": "gpt-3.5-turbo",
+      "model": "gpt-4o",
       "max_tokens": 200,
       "temperature": 0.7,
       "timeout": 10000

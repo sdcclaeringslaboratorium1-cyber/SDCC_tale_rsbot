@@ -1,3 +1,39 @@
+/* Font definitions for Mari font family */
+@font-face {
+  font-family: 'Mari';
+  src: url('assets/Mari.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Mari';
+  src: url('assets/Mari_Light.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Mari';
+  src: url('assets/Mari_Book.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Mari';
+  src: url('assets/Mari_Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Mari';
+  src: url('assets/Mari_Heavy.woff') format('woff');
+  font-weight: 900;
+  font-style: normal;
+}
+
 /* Reset og base styles */
 * {
   margin: 0;
@@ -5,17 +41,29 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: hidden; /* Forhindrer horisontal scroll på hele siden */
+}
+
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Mari', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.6;
   color: #333;
   background-color: #f8fafc;
+  overflow-x: hidden; /* Forhindrer horisontal scroll på body */
+  word-wrap: break-word; /* Bryder lange ord */
+}
+
+/* Global paragraph size */
+p {
+  font-size: 12px;
 }
 
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+  overflow-x: hidden; /* Forhindrer overflow på container niveau */
 }
 
 /* Header */
@@ -66,7 +114,7 @@ body {
 
 /* Main Content */
 .main {
-  padding: 3rem 0;
+  min-height: 100vh;
 }
 
 /* Performance Dashboard Mini - Small and discrete */
@@ -179,10 +227,11 @@ body {
 .chat-container {
   background: white;
   border-radius: 12px;
-  padding: 2rem;
-  margin-bottom: 2rem;
+  padding: 1rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   border: 1px solid #e2e8f0;
+  overflow-x: hidden; /* Forhindrer horisontal overflow */
+  word-wrap: break-word; /* Bryder lange ord */
 }
 
 .chat-header {
@@ -191,9 +240,10 @@ body {
 }
 
 .chat-header h4 {
-  font-size: 1.5rem;
+  font-size: 1rem;
   color: #1e3a8a;
   margin-bottom: 1rem;
+  padding: 1rem;
 }
 
 .chat-header p {
@@ -214,6 +264,9 @@ body {
   object-fit: cover;
   border: 3px solid #e2e8f0;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+  max-width: 100%; /* Responsiv bredde */
 }
 
 .mogens-profile {
@@ -221,7 +274,7 @@ body {
   grid-template-columns: auto 1fr;
   gap: 2rem;
   align-items: center;
-  margin: 2rem 0;
+  /* margin: 2rem 0; */
 }
 
 .mogens-status-info h3 {
@@ -272,31 +325,7 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-/* Status-baseret styling for Mogens' område */
-.mogens-profile.status-1 {
-  border: 3px solid #ef4444;
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-}
-
-.mogens-profile.status-2 {
-  border: 3px solid #f59e0b;
-  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-}
-
-.mogens-profile.status-3 {
-  border: 3px solid #f59e0b;
-  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-}
-
-.mogens-profile.status-4 {
-  border: 3px solid #10b981;
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-}
-
-.mogens-profile.status-5 {
-  border: 3px solid #10b981;
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-}
+/* Status-baseret styling for Mogens' område - alle baggrundsfarver fjernet */
 
 .input-group {
   display: flex;
@@ -396,11 +425,14 @@ body {
   max-height: 500px;
   border: 1px solid #e2e8f0;
   white-space: pre-wrap;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Mari', 'Inter', sans-serif;
   line-height: 1.6;
   overflow-y: auto;
+  overflow-x: hidden; /* Forhindrer horisontal scroll */
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 #f1f5f9;
+  word-wrap: break-word; /* Bryder lange ord */
+  word-break: break-word; /* Bryder lange ord på tværs */
 }
 
 .chat-messages::-webkit-scrollbar {
@@ -436,6 +468,8 @@ body {
   position: sticky;
   top: 1.9rem;
   height: fit-content;
+  overflow-x: hidden; /* Forhindrer horisontal overflow */
+  word-wrap: break-word; /* Bryder lange ord */
 }
 
 .advice-box h3 {
@@ -752,6 +786,119 @@ body {
   
   .metric-mini {
     margin: 0 0.5rem;
+  }
+  
+  /* Mobile optimeringer for chat og advice */
+  .chat-container {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  
+  .mogens-portrait {
+    width: 100%;
+    max-width: 280px;
+    height: auto;
+    aspect-ratio: 370/300;
+  }
+  
+  .mogens-profile {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .chat-messages {
+    padding: 1rem;
+    max-height: 400px;
+    font-size: 0.9rem;
+  }
+  
+  .advice-box {
+    padding: 1.5rem;
+    margin-top: 0.5rem;
+  }
+  
+  .advice-box h3 {
+    font-size: 1.3rem;
+  }
+  
+  .advice-list li {
+    padding-left: 2.5rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  
+  .feedback-box {
+    padding: 1rem;
+  }
+  
+  .feedback-box h3 {
+    font-size: 1.1rem;
+  }
+  
+  .score-circle {
+    width: 50px;
+    height: 50px;
+    font-size: 1.3rem;
+  }
+}
+
+/* Ekstra små skærme (under 480px) */
+@media (max-width: 480px) {
+  .container {
+    padding: 0 10px;
+  }
+  
+  .chat-container {
+    padding: 0.5rem;
+    border-radius: 8px;
+  }
+  
+  .mogens-portrait {
+    max-width: 240px;
+  }
+  
+  .chat-messages {
+    padding: 0.75rem;
+    max-height: 350px;
+    font-size: 0.85rem;
+  }
+  
+  .advice-box {
+    padding: 1rem;
+    border-radius: 8px;
+  }
+  
+  .advice-box h3 {
+    font-size: 1.2rem;
+  }
+  
+  .advice-list li {
+    padding-left: 2rem;
+    font-size: 0.85rem;
+  }
+  
+  .feedback-box {
+    padding: 0.75rem;
+  }
+  
+  .score-circle {
+    width: 45px;
+    height: 45px;
+    font-size: 1.2rem;
+  }
+  
+  .page-header h2 {
+    font-size: 1.8rem;
+  }
+  
+  .input-group {
+    gap: 0.5rem;
+  }
+  
+  .send-button {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9rem;
   }
 }
 

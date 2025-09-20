@@ -2,7 +2,7 @@
 <html lang="da">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Chat med Mogens - SDCC Læring</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -24,7 +24,7 @@
       <div class="header-content">
         <div class="logo">
           <h1>SDCC Læring</h1>
-          <p>Steno Diabetes Center Copenhagen!</p>
+          <p>Steno Diabetes Center Copenhagen</p>
         </div>
       </div>
     </div>
@@ -34,7 +34,7 @@
   <main class="main">
     <div class="container">
       <!-- Performance Dashboard - Small and discrete -->
-      <div class="performance-dashboard-mini">
+      <div class="performance-dashboard-mini" style="display: none;">
         <span class="metric-mini">Første: <span id="firstResponseTime">-</span></span>
         <span class="metric-mini">Gns: <span id="averageResponseTime">-</span></span>
         <span class="metric-mini">Antal: <span id="responseCount">0</span></span>
@@ -42,8 +42,9 @@
 
       <!-- Page Header -->
       <div class="page-header">
-        <h2>Patient Simulator: Mogens Mortensen</h2>
-        <p class="subtitle">Øv dig i patientsamtaler med den interaktive simulator</p>
+        <h2>Patient Samtale: Mogens Mortensen</h2>
+        <p class="task-description">Mogens er 64 og har haft diabetes i 10 år. <br/><b>Din opgave er at tale med Mogens om at måle sit blodsukker hver dag morgen og aften med henblik på muligvis at starte på insulinbehandling</b></p>
+          
       </div>
 
       <!-- Layout Container for Chat og Advice -->
@@ -51,16 +52,15 @@
         <!-- Chat Interface -->
         <div class="chat-container">
           <div class="chat-header">
-            <h4>Chat med Mogens</h4>
-            <p class="task-description">Mogens er 64 og har haft diabetes i 10 år. <br/><b>Din opgave er at tale med Mogens om at måle sit blodsukker hver dag morgen og aften med henblik på muligvis at starte på insulinbehandling</b></p>
+         
           
             <div class="mogens-profile">
               <div class="mogens-image" style="position: relative;">
-                <img src="images/Ny_mogens_unhappy1.png" alt="Mogens Mortensen" class="mogens-portrait">
+                <img src="images/mogens_lvl1.png" alt="Mogens Mortensen" class="mogens-portrait">
                 <button class="info-button" id="infoButton" title="Se Mogens' information">i</button>
               </div>
               <div class="mogens-status-info">
-                <h3 id="mogensStatus">Patientens nuværende attitude: Indlæser...</h3>
+                <h4 id="mogensStatus">Patientens nuværende attitude: Indlæser...</h4>
                 <div class="status-indicator">
                   <div class="status-bar">
                     <div class="status-fill" id="statusFill"></div>
