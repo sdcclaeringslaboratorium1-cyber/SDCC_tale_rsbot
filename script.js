@@ -1,6 +1,10 @@
 // Gemmer dialogen mellem bruger og Mogens
 let dialog = [];
 
+// Info modal funktionalitet
+let infoModal = null;
+let infoModalClose = null;
+
 // Holder styr på Mogens' nuværende status (1-5 skala)
 let mogensStatus = 1; // Starter med status 1 (meget kritisk/lukket)
 let currentStatusClass = null; // Holder styr på nuværende status-klasse
@@ -15,6 +19,11 @@ let waitingAudio = null;
 
 // Velkomstlyd variabel
 let welcomeAudio = null;
+
+// Pre-genereret introduktionslyd
+let preGeneratedIntroAudio = null;
+let introAudioReady = false;
+let introAudioGenerating = false;
 
 // Performance tracking
 let performanceMetrics = {
@@ -31,8 +40,35 @@ let initialLoaderInterval = null; // Interval til loader-tekst
 
 // Backend base URL. Tom streng = samme origin. Sættes automatisk til Render ved fallback
 let API_BASE = '';
+
+// Hvis vi er på localhost men ikke på port 3000, brug eksplicit localhost:3000
+if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && 
+    window.location.port !== '3000') {
+  API_BASE = 'http://localhost:3000';
+}
+
 function apiUrl(path) {
   return (API_BASE ? API_BASE : '') + path;
+}
+
+// Hjælper: Ensartet timeout-håndtering (fallback hvis AbortSignal.timeout ikke findes)
+function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  try {
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+      return fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs) });
+    }
+  } catch (_) { /* ignore */ }
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+}
+
+function isLocalHostEnv() {
+  return (
+    window.location.protocol === 'file:' ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  );
 }
 
 // Funktion: Hent aktiv karakter fra URL parameter
@@ -106,8 +142,16 @@ function startAudioAndHideOverlay() {
   }
   // Vis loader indtil første lyd afspilles
   showInitialLoader();
-  // Afspil introducerende hilsen i stedet for mp3
-  playInitialGreetingFromConfig();
+  
+  // Tjek om intro lyden allerede er klar
+  if (introAudioReady && preGeneratedIntroAudio) {
+    console.log('✅ Pre-genereret intro lyd er klar - afspiller med det samme');
+    playPreGeneratedIntroAudio();
+  } else {
+    console.log('⏳ Intro lyd genereres stadig - starter intro wait lyd');
+    // Start intro wait lyd mens vi venter
+    playIntroWaitingAudio();
+  }
 }
 
 // Funktion: Afspil ventelyd mens vi venter på Mogens' svar
@@ -198,21 +242,203 @@ function stopWaitingAudio() {
   }
 }
 
-// Funktion: Hent introducerende hilsen fra config og afspil via ElevenLabs
-function playInitialGreetingFromConfig() {
+// Funktion: Afspil intro waiting lyd (speciel lyd til første hilsen)
+function playIntroWaitingAudio() {
   try {
+    // Stop eventuel eksisterende ventelyd
+    if (waitingAudio) {
+      waitingAudio.pause();
+      waitingAudio = null;
+    }
+    
+    // Hent intro wait fil fra config eller fallback
+    const introWaitFile = (patientConfig && patientConfig.audio_files?.intro_waiting) || 
+                         (config && config.characters[activeCharacter]?.audio_files?.intro_waiting) ||
+                         (activeCharacter === 'bodil' ? './audio/bodilintrowait.mp3' : './audio/mogensintrowait.mp3');
+    
+    // Opret og afspil intro wait lyd
+    waitingAudio = new Audio(introWaitFile);
+    waitingAudio.volume = 0; // Start stille for fade-in
+    waitingAudio.loop = true; // Gentag lyden indtil hilsen er klar
+    
+    waitingAudio.play().catch(error => {
+      console.log('Kunne ikke afspille intro ventelyd:', error);
+    });
+    
+    // Fade-in effekt
+    const targetVolume = (config && config.audio?.waiting_volume) || 0.6;
+    const fadeInDuration = 1000; // 1 sekund fade-in
+    const fadeInSteps = 20;
+    const fadeInInterval = fadeInDuration / fadeInSteps;
+    const volumeStep = targetVolume / fadeInSteps;
+    
+    let currentStep = 0;
+    const fadeInTimer = setInterval(() => {
+      currentStep++;
+      if (currentStep <= fadeInSteps && waitingAudio) {
+        waitingAudio.volume = Math.min(targetVolume, waitingAudio.volume + volumeStep);
+      } else {
+        clearInterval(fadeInTimer);
+        if (waitingAudio) waitingAudio.volume = targetVolume;
+      }
+    }, fadeInInterval);
+    
+    console.log(`Intro ventelyd afspilles: ${introWaitFile}`);
+  } catch (error) {
+    console.log('Fejl ved afspilning af intro ventelyd:', error);
+  }
+}
+
+// Funktion: Pre-generer intro lyden i baggrunden
+async function preGenerateIntroAudio() {
+  if (introAudioGenerating || introAudioReady) {
+    console.log('ℹ️ Intro lyd allerede genereret eller under generering');
+    return;
+  }
+  
+  try {
+    introAudioGenerating = true;
     const greeting = getInitialGreetingFromConfig();
     if (!greeting) {
-      console.log('Ingen introducerende hilsen fundet i config. Springes over.');
-      hideInitialLoader();
+      console.log('Ingen introducerende hilsen fundet i config.');
+      introAudioGenerating = false;
       return;
     }
-    const requestId = 'init_' + Math.random().toString(36).substr(2, 6);
-    console.log(`[${requestId}] 🔊 Afspiller introducerende hilsen fra config`);
-    // Brug eksisterende TTS-funktion; den tilføjer også beskeden til dialogen og opdaterer UI
-    speakWithElevenLabsOnPlay(greeting, requestId);
+    
+    const requestId = 'pre_init_' + Math.random().toString(36).substr(2, 6);
+    console.log(`[${requestId}] 🔊 Pre-genererer introducerende hilsen i baggrunden...`);
+    
+    // Hent lyd fra backend uden at afspille den endnu
+    const audioBlob = await generateIntroAudioBlob(greeting, requestId);
+    if (audioBlob) {
+      preGeneratedIntroAudio = audioBlob;
+      introAudioReady = true;
+      console.log(`[${requestId}] ✅ Intro lyd er pre-genereret og klar`);
+      
+      // Hvis intro waiting lyd spiller, skift til den rigtige lyd
+      if (waitingAudio && !waitingAudio.paused) {
+        console.log('🔄 Skifter fra intro wait til pre-genereret lyd');
+        playPreGeneratedIntroAudio();
+      }
+    }
   } catch (error) {
-    console.error('Fejl ved afspilning af introducerende hilsen:', error);
+    console.error('❌ Fejl ved pre-generering af intro lyd:', error);
+  } finally {
+    introAudioGenerating = false;
+  }
+}
+
+// Funktion: Generer intro audio blob fra backend
+async function generateIntroAudioBlob(text, requestId) {
+  try {
+    const isLocalServer = window.location.protocol === 'file:' || 
+                         window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1';
+
+    let res;
+    if (isLocalServer) {
+      try {
+        res = await fetch(apiUrl('/api/speak'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            text,
+            character: activeCharacter
+          }),
+          signal: AbortSignal.timeout(15000)
+        });
+      } catch (fetchErr) {
+        console.log(`[${requestId}] ⚠️ Lokal server ikke tilgængelig, prøver Render...`);
+        if (!API_BASE) {
+          API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+        }
+        res = await fetch(apiUrl('/api/speak'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            text,
+            character: activeCharacter
+          }),
+          signal: AbortSignal.timeout(20000)
+        });
+      }
+    } else {
+      if (!API_BASE) {
+        API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+      }
+      res = await fetchWithTimeout(apiUrl('/api/speak'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          text,
+          character: activeCharacter
+        })
+      }, 45000);
+    }
+    
+    if (res.ok) {
+      return await res.blob();
+    } else {
+      console.error(`[${requestId}] ❌ Fejl ved generering af intro lyd:`, res.status);
+      return null;
+    }
+  } catch (err) {
+    console.error(`[${requestId}] ❌ Fejl ved fetch af intro lyd:`, err);
+    return null;
+  }
+}
+
+// Funktion: Afspil pre-genereret intro lyd
+function playPreGeneratedIntroAudio() {
+  if (!preGeneratedIntroAudio) {
+    console.error('❌ Ingen pre-genereret intro lyd at afspille');
+    return;
+  }
+  
+  try {
+    // Stop intro waiting lyd med fade-out
+    stopWaitingAudioWithFade();
+    hideWaitingLoader();
+    
+    const greeting = getInitialGreetingFromConfig();
+    const audioUrl = URL.createObjectURL(preGeneratedIntroAudio);
+    const audioPlayer = document.getElementById('audioPlayer');
+    audioPlayer.src = audioUrl;
+    audioPlayer.style.display = "block";
+    
+    // Tilføj patientens introducerende besked til dialogen
+    const patientName = (patientConfig && patientConfig.name) || "Patient";
+    dialog.push({ sender: patientName, text: greeting });
+    console.log(`✅ Introducerende besked fra ${patientName} tilføjet til dialog`);
+    
+    // Opdater chatvisningen
+    updateChatDisplay();
+    
+    // Afspil lyden efter kort forsinkelse
+    const playDelay = (config && config.audio && config.audio.play_delay) || 300;
+    setTimeout(() => {
+      audioPlayer.onplay = function() {
+        // Genaktiver input
+        setInputState(true);
+        // Skjul initial loader når første lyd starter
+        hideInitialLoader();
+        
+        audioPlayer.onplay = null;
+      };
+      // Fokus på input når lyden slutter
+      audioPlayer.onended = function() {
+        const promptInput = document.getElementById('prompt');
+        if (promptInput && !isMobileDevice()) {
+          promptInput.focus();
+        }
+        audioPlayer.onended = null;
+      };
+      audioPlayer.play();
+    }, playDelay);
+    
+    console.log('🔊 Afspiller pre-genereret intro lyd');
+  } catch (error) {
+    console.error('❌ Fejl ved afspilning af pre-genereret intro lyd:', error);
     hideInitialLoader();
   }
 }
@@ -364,7 +590,8 @@ async function sendMessage() {
   console.log(`[${requestId}] ⏱️ Venter ${randomDelay}ms før ventelyd starter...`);
   
   setTimeout(() => {
-    // Start ventelyd mens vi venter på svar
+    // Vis loader og start ventelyd
+    showWaitingLoader();
     playWaitingAudio();
   }, randomDelay);
 
@@ -419,15 +646,14 @@ async function sendMessage() {
       if (!API_BASE) {
         API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
       }
-      res = await fetch(apiUrl('/api/chat'), {
+      res = await fetchWithTimeout(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: userMessage, 
           dialog
-        }),
-        signal: AbortSignal.timeout(15000) // 15 sek timeout for Render
-      });
+        })
+      }, 45000); // Længere timeout på FTP pga. koldstart
     }
     
     const openaiTime = Date.now() - openaiStartTime;
@@ -503,7 +729,8 @@ async function sendMessage() {
     }
     
   } catch (err) {
-    // Stop ventelyden ved fejl
+    // Stop ventelyden og skjul loader ved fejl
+    hideWaitingLoader();
     stopWaitingAudio();
     document.getElementById('response').innerText += "\n(Fejl i kommunikation med serveren)";
     console.error(`[${requestId}] ❌ Fejl ved afspilning af ventelyd:`, err);
@@ -580,15 +807,14 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
       if (!API_BASE) {
         API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
       }
-      res = await fetch(apiUrl('/api/speak'), {
+      res = await fetchWithTimeout(apiUrl('/api/speak'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           text,
           character: activeCharacter
-        }),
-        signal: AbortSignal.timeout(20000) // 20 sek timeout for Render lyd
-      });
+        })
+      }, 45000); // Længere timeout på FTP pga. koldstart
     }
     
     if (res.ok) {
@@ -598,8 +824,9 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
       audioPlayer.src = audioUrl;
       audioPlayer.style.display = "block";
       
-      // Stop ventelyden med fade-out effekt
+      // Stop ventelyden med fade-out effekt og skjul loader
       stopWaitingAudioWithFade();
+      hideWaitingLoader();
       
       // Tilføj patientens svar til dialogen med det samme
       const patientName = (patientConfig && patientConfig.name) || "Patient";
@@ -638,13 +865,15 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
       checkForEndConversation(text, patientName);
       
     } else {
-      // Stop ventelyden ved fejl
+      // Stop ventelyden og skjul loader ved fejl
       stopWaitingAudio();
+      hideWaitingLoader();
       document.getElementById('response').innerText += "\n(Kunne ikke hente lyd fra ElevenLabs)";
     }
   } catch (err) {
-    // Stop ventelyden ved fejl
+    // Stop ventelyden og skjul loader ved fejl
     stopWaitingAudio();
+    hideWaitingLoader();
     document.getElementById('response').innerText += "\n(Fejl i tekst-til-tale)";
     hideInitialLoader();
     throw err;
@@ -680,7 +909,8 @@ function showInitialLoader() {
       text.id = 'initialLoaderText';
       text.style.color = '#374151';
       text.style.fontSize = '0.95rem';
-      text.textContent = 'Mogens forbereder sig';
+      const patientName = (patientConfig && patientConfig.name) || 'Patienten';
+      text.textContent = `${patientName} forbereder sig`;
 
       loader.appendChild(dot);
       loader.appendChild(text);
@@ -699,7 +929,10 @@ function showInitialLoader() {
       initialLoaderInterval = setInterval(() => {
         dots = (dots + 1) % 4;
         const t = document.getElementById('initialLoaderText');
-        if (t) t.textContent = 'Mogens forbereder sig' + '.'.repeat(dots);
+        if (t) {
+          const patientName = (patientConfig && patientConfig.name) || 'Patienten';
+          t.textContent = `${patientName} forbereder sig` + '.'.repeat(dots);
+        }
       }, 500);
     } else {
       loader.style.display = 'flex';
@@ -722,6 +955,78 @@ function hideInitialLoader() {
   }
 }
 
+// Funktion: Vis waiting loader (mens vi venter på patientens svar)
+function showWaitingLoader() {
+  try {
+    // Fjern eksisterende loader hvis den findes
+    hideWaitingLoader();
+    
+    const loader = document.createElement('div');
+    loader.id = 'waitingLoader';
+    loader.style.display = 'flex';
+    loader.style.alignItems = 'center';
+    loader.style.gap = '10px';
+    loader.style.padding = '10px 12px';
+    loader.style.border = '1px solid #e5e7eb';
+    loader.style.borderRadius = '10px';
+    loader.style.background = '#ffffff';
+    loader.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+    loader.style.width = 'fit-content';
+    loader.style.margin = '12px 0';
+
+    const dot = document.createElement('div');
+    dot.style.width = '10px';
+    dot.style.height = '10px';
+    dot.style.borderRadius = '50%';
+    dot.style.background = '#10b981';
+    dot.style.opacity = '0.8';
+
+    const text = document.createElement('div');
+    text.id = 'waitingLoaderText';
+    text.style.color = '#374151';
+    text.style.fontSize = '0.95rem';
+    const patientName = (patientConfig && patientConfig.name) || 'Patienten';
+    text.textContent = `${patientName} forbereder sig`;
+
+    loader.appendChild(dot);
+    loader.appendChild(text);
+
+    // Indsæt i chat messages
+    const chatMessages = document.getElementById('response');
+    if (chatMessages) {
+      chatMessages.insertBefore(loader, chatMessages.firstChild);
+    }
+    
+    // Animér prikker
+    let dots = 0;
+    loader.dotsInterval = setInterval(() => {
+      dots = (dots + 1) % 4;
+      const t = document.getElementById('waitingLoaderText');
+      if (t) {
+        const patientName = (patientConfig && patientConfig.name) || 'Patienten';
+        t.textContent = `${patientName} forbereder sig` + '.'.repeat(dots);
+      }
+    }, 500);
+  } catch (e) {
+    console.log('Fejl ved visning af waiting loader:', e);
+  }
+}
+
+// Funktion: Skjul waiting loader
+function hideWaitingLoader() {
+  try {
+    const loader = document.getElementById('waitingLoader');
+    if (loader) {
+      if (loader.dotsInterval) {
+        clearInterval(loader.dotsInterval);
+      }
+      loader.remove();
+    }
+  } catch (e) {
+    // Ignorer fejl
+  }
+}
+
 // Helper: Detekter mobil/tablet (simple heuristik)
 function isMobileDevice() {
   try {
@@ -733,78 +1038,107 @@ function isMobileDevice() {
   }
 }
 
+// Central funktion: Opdater alle status-elementer konsistent
+async function updateAllStatusElements(newStatus, source = 'unknown') {
+  console.log(`🔄 updateAllStatusElements kaldt: ${newStatus} (fra ${source})`);
+  
+  if (newStatus < 1 || newStatus > 5) {
+    console.warn(`⚠️ Ugyldig status: ${newStatus} (skal være 1-5)`);
+    return false;
+  }
+  
+  const oldStatus = mogensStatus;
+  mogensStatus = newStatus;
+  
+  console.log(`📊 Status ændret fra ${oldStatus} til ${newStatus}`);
+  
+  // 1. Opdater status tekst
+  const statusText = getStatusDescription(mogensStatus);
+  const mogensStatusElement = document.getElementById('mogensStatus');
+  
+  if (mogensStatusElement) {
+    const patientName = (patientConfig && patientConfig.name) || 'Patient';
+    mogensStatusElement.innerText = `${patientName}s nuværende attitude: \n\n ${statusText}`;
+    console.log(`✅ Status tekst opdateret: ${statusText}`);
+  } else {
+    console.error('❌ mogensStatus element ikke fundet');
+  }
+  
+  // 2. Opdater status bar
+  const statusFill = document.getElementById('statusFill');
+  const statusTextEl = document.getElementById('statusText');
+  if (statusFill) {
+    const percentage = (mogensStatus / 5) * 100;
+    statusFill.style.width = percentage + '%';
+    const description = getStatusDescription(mogensStatus);
+    if (statusTextEl) statusTextEl.textContent = description;
+    console.log(`✅ Status bar opdateret til ${percentage}%`);
+  } else {
+    console.error('❌ statusFill element ikke fundet');
+  }
+  
+  // 3. Opdater status bar farve
+  updateStatusBarColor(mogensStatus);
+  
+  // 4. Opdater billede og område
+  await updateAreaByStatus(mogensStatus);
+  
+  // 5. Tjek for completion popup
+  if (mogensStatus === 5 && !completionShown) {
+    completionShown = true;
+    showCompletionPopup();
+  }
+  
+  console.log(`✅ Alle status elementer opdateret til niveau ${mogensStatus}/5`);
+  return true;
+}
+
 // Funktion: Opdater patientens status baseret på evaluation feedback
 async function updateMogensStatusFromEvaluation(newStatus, newAttitude = null) {
   console.log(`🔍 updateMogensStatusFromEvaluation kaldt med: newStatus=${newStatus}, newAttitude=${newAttitude}`);
   
-  if (newStatus >= 1 && newStatus <= 5) {
-    const oldStatus = mogensStatus;
-    
-    // Tjek om status faktisk ændrer sig
-    if (newStatus === oldStatus) {
-      console.log(`ℹ️ Status ${newStatus} er uændret - ingen opdatering nødvendig`);
-      return;
-    }
-    
-    mogensStatus = newStatus;
-    
-    // Log status-ændringen
-    console.log(`🔄 Patientens status ændret fra ${oldStatus} til ${newStatus} (fra evaluation)`);
-    console.log(`📊 Patientens nuværende status: ${mogensStatus}/5`);
-    
-    // Opdater h2-elementet med ny status - brug altid beskrivelsen, så attitude matcher status
-    const statusText = getStatusDescription(mogensStatus);
-    const mogensStatusElement = document.getElementById('mogensStatus');
-    
-    console.log(`🔍 Søger efter mogensStatus element:`, mogensStatusElement);
-    console.log(`🔍 Status tekst: ${statusText}`);
-    
-    if (mogensStatusElement) {
-      mogensStatusElement.innerText = `${(patientConfig && patientConfig.name) || 'Patient'}s nuværende attitude: \n\n ${statusText}`;
-      console.log(`✅ Mogens status tekst opdateret`);
-    } else {
-      console.error('❌ mogensStatus element ikke fundet');
-    }
-    
-    // Opdater status-bar'en
-    const statusFill = document.getElementById('statusFill');
-    console.log(`🔍 Søger efter statusFill element:`, statusFill);
-    
-    if (statusFill) {
-      const percentage = (mogensStatus / 5) * 100;
-      statusFill.style.width = percentage + '%';
-      console.log(`✅ Status bar opdateret til ${percentage}%`);
-      // Popup ved 5/5 (kun én gang)
-      if (mogensStatus === 5 && !completionShown) {
-        completionShown = true;
-        showCompletionPopup();
-      }
-    } else {
-      console.error('❌ statusFill element ikke fundet');
-    }
-    
-    // Tilføj visuel feedback
-    updateStatusBarColor(mogensStatus);
-    
-    // Opdater område baseret på status
-    await updateAreaByStatus(mogensStatus);
-  } else {
-    console.warn(`⚠️ Ugyldig status: ${newStatus} (skal være 1-5)`);
+  // Tjek om status faktisk ændrer sig
+  if (newStatus === mogensStatus) {
+    console.log(`ℹ️ Status ${newStatus} er uændret - ingen opdatering nødvendig`);
+    return;
   }
+  
+  // Brug den centrale funktion for at sikre konsistens
+  await updateAllStatusElements(newStatus, 'evaluation');
 }
 
 // Funktion: Opdater status-bar farve baseret på status
 function updateStatusBarColor(status) {
   const statusFill = document.getElementById('statusFill');
   
-  // Opdater gradient baseret på status
-  if (status <= 2) {
-    statusFill.style.background = 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)'; // Rød gradient
-  } else if (status === 3) {
-    statusFill.style.background = 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)'; // Orange gradient
-  } else {
-    statusFill.style.background = 'linear-gradient(90deg, #10b981 0%, #059669 100%)'; // Grøn gradient
+  if (!statusFill) {
+    console.error('❌ statusFill element ikke fundet i updateStatusBarColor');
+    return;
   }
+  
+  // Opdater gradient baseret på status - 5 forskellige farver
+  switch (status) {
+    case 1:
+      statusFill.style.background = 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)'; // Rød gradient
+      break;
+    case 2:
+      statusFill.style.background = 'linear-gradient(90deg, #f97316 0%, #ea580c 100%)'; // Orange gradient
+      break;
+    case 3:
+      statusFill.style.background = 'linear-gradient(90deg, #eab308 0%, #ca8a04 100%)'; // Gul gradient
+      break;
+    case 4:
+      statusFill.style.background = 'linear-gradient(90deg, #84cc16 0%, #65a30d 100%)'; // Gulgrøn gradient
+      break;
+    case 5:
+      statusFill.style.background = 'linear-gradient(90deg, #22c55e 0%, #16a34a 100%)'; // Grøn gradient
+      break;
+    default:
+      statusFill.style.background = 'linear-gradient(90deg, #6b7280 0%, #4b5563 100%)'; // Grå gradient (fallback)
+      break;
+  }
+  
+  console.log(`🎨 Status bar farve opdateret for niveau ${status}`);
 }
 
 // Simpel popup ved fuldført (5/5)
@@ -1021,6 +1355,8 @@ async function updateAreaByStatus(status) {
   console.log(`🖼️ Mogens profile klasser:`, mogensProfile.className);
 }
 
+
+
 // Funktion: Rens Mogens' svar - fjern alle hårde klammer før ElevenLabs
 function cleanMogensReply(reply) {
   // Fjern alle hårde klammer [tekst] fra svaret før det sendes til ElevenLabs
@@ -1126,12 +1462,11 @@ async function evaluateUserMessageInContext(userMessage, mogensReply, conversati
       if (!API_BASE) {
         API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
       }
-      res = await fetch(apiUrl('/api/evaluate'), {
+      res = await fetchWithTimeout(apiUrl('/api/evaluate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(15000) // 15 sek timeout for Render evaluering
-      });
+        body: JSON.stringify(requestBody)
+      }, 45000); // Længere timeout på FTP pga. koldstart
     }
     
     if (res.ok) {
@@ -1204,8 +1539,8 @@ function updateChatDisplay() {
 
 // Funktion: Udtræk score fra feedback-tekst
 function extractScoreFromFeedback(feedback) {
-  const scoreMatch = feedback.match(/\[Score:\s*(\d+)\/10\]/);
-  return scoreMatch ? parseInt(scoreMatch[1]) : 5;
+  const scoreMatch = feedback ? feedback.match(/\[Score:\s*(\d+)\/10\]/) : null;
+  return scoreMatch ? parseInt(scoreMatch[1], 10) : 5;
 }
 
 // Funktion: Bestem score-klasse baseret på score
@@ -1309,13 +1644,21 @@ function setInputState(active) {
   
   if (active) {
     promptInput.disabled = false;
-    promptInput.placeholder = `Skriv din besked til ${(patientConfig && patientConfig.name) || 'patienten'}...`;
+    if (activeCharacter === 'bodil') {
+      promptInput.placeholder = 'Hvad vil du sige til Bodil...';
+    } else {
+      promptInput.placeholder = `Skriv din besked til ${(patientConfig && patientConfig.name) || 'patienten'}...`;
+    }
     sendButton.disabled = false;
     sendButton.textContent = "Send";
     micButton.disabled = false;
   } else {
     promptInput.disabled = true;
-    promptInput.placeholder = `Venter på ${(patientConfig && patientConfig.name) || 'patientens'} svar...`;
+    if (activeCharacter === 'bodil') {
+      promptInput.placeholder = 'Venter på Bodils svar...';
+    } else {
+      promptInput.placeholder = `Venter på ${(patientConfig && patientConfig.name) || 'patientens'} svar...`;
+    }
     sendButton.disabled = true;
     sendButton.textContent = "Venter...";
     micButton.disabled = true;
@@ -1422,19 +1765,17 @@ async function loadConfig() {
     console.log('✅ Konfiguration og status_images indlæst korrekt');
     
     // Opdater UI med konfigurationen
-    updateUIWithConfig();
+    await updateUIWithConfig();
     
     // Sæt initial status - vent lidt for at sikre DOM er klar
     setTimeout(async () => {
-      // Initialiser tracking variabler
-      currentStatusClass = `status-${mogensStatus}`;
-      const statusImages = (patientConfig && patientConfig.status_images) || 
-                          (config && config.characters && config.characters[activeCharacter] && config.characters[activeCharacter].status_images);
-      currentImagePath = statusImages && statusImages[mogensStatus.toString()] ? statusImages[mogensStatus.toString()] : null;
-      
-      await updateAreaByStatus(mogensStatus);
-      console.log(`📊 ${(patientConfig && patientConfig.name) || 'Patient'}'s initiale status: ${mogensStatus}/5`);
+      // Brug central funktion for konsistent status opdatering
+      await updateAllStatusElements(mogensStatus, 'initial_timeout');
     }, 500);
+    
+    // Start pre-generering af intro lyd i baggrunden
+    console.log('🚀 Starter pre-generering af intro lyd...');
+    preGenerateIntroAudio();
   } catch (error) {
     console.error('❌ Fejl ved indlæsning af konfiguration:', error);
     console.log('Forsøger at bruge lokal config...');
@@ -1464,19 +1805,17 @@ async function loadLocalConfig() {
       console.log('✅ Lokal konfiguration og status_images indlæst korrekt');
       
       // Opdater UI med konfigurationen
-      updateUIWithConfig();
+      await updateUIWithConfig();
       
       // Sæt initial status - vent lidt for at sikre DOM er klar
       setTimeout(async () => {
-        // Initialiser tracking variabler
-        currentStatusClass = `status-${mogensStatus}`;
-        const statusImages = (patientConfig && patientConfig.status_images) || 
-                            (config && config.characters && config.characters[activeCharacter] && config.characters[activeCharacter].status_images);
-        currentImagePath = statusImages && statusImages[mogensStatus.toString()] ? statusImages[mogensStatus.toString()] : null;
-        
-        await updateAreaByStatus(mogensStatus);
-        console.log(`📊 ${(patientConfig && patientConfig.name) || 'Patient'}'s initiale status: ${mogensStatus}/5`);
+        // Brug central funktion for konsistent status opdatering
+        await updateAllStatusElements(mogensStatus, 'initial_local_timeout');
       }, 100); // Reduceret fra 500ms til 100ms
+      
+      // Start pre-generering af intro lyd i baggrunden
+      console.log('🚀 Starter pre-generering af intro lyd (lokal config)...');
+      preGenerateIntroAudio();
     } else {
       throw new Error(`Lokal ${configFileName} ikke fundet`);
     }
@@ -1501,11 +1840,11 @@ async function loadLocalConfig() {
             "5": "Positiv og indvilger i målinger"
           },
           status_images: {
-            "1": "images/mogens_lvl1.png",
-            "2": "images/mogens_lvl2.png", 
-            "3": "images/mogens_lvl3.png",
-            "4": "images/mogens_lvl4.png",
-            "5": "images/mogens_lvl5.png"
+            "1": "./images/mogens_lvl1.png",
+            "2": "./images/mogens_lvl2.png", 
+            "3": "./images/mogens_lvl3.png",
+            "4": "./images/mogens_lvl4.png",
+            "5": "./images/mogens_lvl5.png"
           }
         }
       },
@@ -1523,15 +1862,17 @@ async function loadLocalConfig() {
     };
     
     patientConfig = config.characters[activeCharacter];
-    updateUIWithConfig();
+    await updateUIWithConfig();
     
     // Sæt initial status hurtigere for fallback
     setTimeout(async () => {
-      currentStatusClass = `status-${mogensStatus}`;
-      currentImagePath = config.characters[activeCharacter].status_images[mogensStatus.toString()];
-      await updateAreaByStatus(mogensStatus);
-      console.log(`📊 ${patientConfig.name}'s initiale status: ${mogensStatus}/5 (fallback)`);
+      // Brug central funktion for konsistent status opdatering
+      await updateAllStatusElements(mogensStatus, 'fallback_timeout');
     }, 100);
+    
+    // Start pre-generering af intro lyd i baggrunden
+    console.log('🚀 Starter pre-generering af intro lyd (fallback config)...');
+    preGenerateIntroAudio();
     
     console.log('⚠️ Bruger minimal fallback konfiguration');
   }
@@ -1558,13 +1899,41 @@ async function reloadConfig() {
 }
 
 // Funktion: Opdater UI med konfiguration
-function updateUIWithConfig() {
+async function updateUIWithConfig() {
   if (!config) return;
   
   // Opdater titel og beskrivelser
   const uiConfig = config.ui;
   if (uiConfig) {
     document.title = uiConfig.title || document.title;
+    
+    // Vis app title hvis den findes i config
+    const appTitleContainer = document.getElementById('appTitleContainer');
+    const appTitle = document.getElementById('appTitle');
+    console.log('🔍 App title debug:', {
+      container: !!appTitleContainer,
+      title: !!appTitle,
+      configTitle: uiConfig.app_title,
+      activeCharacter: activeCharacter,
+      config: config ? 'loaded' : 'missing',
+      uiConfig: uiConfig ? 'exists' : 'missing'
+    });
+    
+    if (appTitleContainer && appTitle) {
+      if (uiConfig.app_title) {
+        appTitle.textContent = uiConfig.app_title;
+        appTitleContainer.style.display = 'block';
+        console.log(`✅ App title sat til: "${uiConfig.app_title}" og container vist`);
+      } else {
+        console.log('ℹ️ Ingen app_title i config - skjuler container');
+        appTitleContainer.style.display = 'none';
+      }
+    } else {
+      console.error('❌ App title elementer ikke fundet:', {
+        container: appTitleContainer,
+        title: appTitle
+      });
+    }
     
     const headerTitle = document.querySelector('.logo h1');
     if (headerTitle && uiConfig.header?.title) {
@@ -1591,15 +1960,8 @@ function updateUIWithConfig() {
       taskDescription.innerHTML = uiConfig.page.task_description;
     }
     
-    // Opdater patientens initiale status og statusbar
-    const statusText = getStatusDescription(mogensStatus);
-    const mogensStatusElement = document.getElementById('mogensStatus');
-    if (mogensStatusElement) {
-      mogensStatusElement.innerText = `${(patientConfig && patientConfig.name) || 'Patient'}s nuværende attitude: \n\n ${statusText}`;
-      console.log(`✅ ${activeCharacter} status opdateret i HTML: ${statusText} (Status: ${mogensStatus}/5)`);
-    } else {
-      console.error('❌ mogensStatus element ikke fundet i updateUIWithConfig');
-    }
+    // Opdater patientens initiale status konsistent
+    await updateAllStatusElements(mogensStatus, 'initial_ui');
     
     // Opdater patientens billede baseret på aktiv karakter
     const mogensPortrait = document.querySelector('.mogens-portrait');
@@ -1608,16 +1970,30 @@ function updateUIWithConfig() {
       mogensPortrait.alt = patientConfig.name;
       console.log(`✅ ${activeCharacter} billede opdateret til: ${patientConfig.image}`);
     }
-    const statusFillInit = document.getElementById('statusFill');
-    if (statusFillInit) {
-      const percentageInit = (mogensStatus / 5) * 100;
-      statusFillInit.style.width = percentageInit + '%';
-      updateStatusBarColor(mogensStatus);
+    
+    // Opdater tekst på info-knappen dynamisk: "Data om [patient]"
+    const infoButton = document.getElementById('infoButton');
+    if (infoButton) {
+      const patientNameForButton = (patientConfig && patientConfig.name) || 'patienten';
+      infoButton.innerHTML = `Data om <br/> ${patientNameForButton}`;
+      infoButton.setAttribute('title', `Se data om ${patientNameForButton}`);
     }
     
     const adviceTitle = document.querySelector('.advice-box h3');
     if (adviceTitle && uiConfig.advice?.title) {
       adviceTitle.textContent = uiConfig.advice.title;
+    }
+    
+    // Opdater advice liste med items fra config
+    const adviceList = document.querySelector('.advice-list');
+    if (adviceList && uiConfig.advice?.items && Array.isArray(uiConfig.advice.items)) {
+      adviceList.innerHTML = ''; // Tøm eksisterende indhold
+      uiConfig.advice.items.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        adviceList.appendChild(li);
+      });
+      console.log(`✅ Opdateret advice liste med ${uiConfig.advice.items.length} råd`);
     }
     
     const feedbackTitle = document.querySelector('.feedback-box h3');
@@ -1644,6 +2020,20 @@ function updateUIWithConfig() {
     if (audioOverlayWarning && uiConfig.audio_overlay?.warning) {
       audioOverlayWarning.textContent = uiConfig.audio_overlay.warning;
     }
+
+    // Intro overlay felter fra ui.page
+    const introTitle = document.querySelector('.intro-title');
+    const introSubtitle = document.querySelector('.intro-subtitle');
+    const introInstruction = document.querySelector('.intro-instruction');
+    if (introTitle && uiConfig.page?.title) {
+      introTitle.textContent = uiConfig.page.title;
+    }
+    if (introSubtitle && uiConfig.page?.subtitle) {
+      introSubtitle.textContent = uiConfig.page.subtitle;
+    }
+    if (introInstruction && uiConfig.page?.task_description) {
+      introInstruction.textContent = uiConfig.page.task_description.replace(/<[^>]*>/g, '');
+    }
   }
 }
 
@@ -1651,6 +2041,16 @@ function updateUIWithConfig() {
 document.addEventListener('DOMContentLoaded', async function() {
   // Indlæs konfiguration først
   await loadConfig();
+  
+  // Sæt initial placeholder baseret på aktiv karakter
+  const promptInput = document.getElementById('prompt');
+  if (promptInput) {
+    if (activeCharacter === 'bodil') {
+      promptInput.placeholder = 'Hvad vil du sige til Bodil...';
+    } else {
+      promptInput.placeholder = `Skriv din besked til ${(patientConfig && patientConfig.name) || 'patienten'}...`;
+    }
+  }
   
   // Initialiser tale-genkendelse
   initSpeechRecognition();
@@ -1675,9 +2075,27 @@ document.addEventListener('DOMContentLoaded', async function() {
   });
 
   // Info button functionality
-  document.getElementById('infoButton').addEventListener('click', function() {
-    showPatientInfo();
-  });
+  console.log('🔍 Søger efter infoButton...');
+  const infoButton = document.getElementById('infoButton');
+  console.log('🔍 infoButton fundet:', infoButton);
+  
+  if (infoButton) {
+    console.log('🔍 Tilføjer event listener til infoButton');
+    infoButton.addEventListener('click', function() {
+      console.log('🔍 Info button klikket');
+      try {
+        console.log('🔍 Kalder showPatientInfo...');
+        console.log('🔍 showPatientInfo type:', typeof showPatientInfo);
+        showPatientInfo();
+        console.log('✅ showPatientInfo kaldt uden fejl');
+      } catch (error) {
+        console.error('❌ Fejl i showPatientInfo:', error);
+      }
+    });
+    console.log('✅ Event listener tilføjet til infoButton');
+  } else {
+    console.error('❌ Info button ikke fundet');
+  }
 
   // Close modal when clicking X
   document.getElementById('infoModalClose').addEventListener('click', function() {
@@ -1725,58 +2143,128 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // Patient info modal functions
 function showPatientInfo() {
+  console.log('🔍 showPatientInfo kaldt');
+  console.log('🔍 patientConfig:', patientConfig);
+  console.log('🔍 activeCharacter:', activeCharacter);
+  
   const modal = document.getElementById('infoModal');
   const content = document.getElementById('infoModalContent');
+  const modalTitle = document.getElementById('infoModalTitle');
   
   if (!patientConfig) {
     console.error('Patient config ikke tilgængelig');
     return;
   }
+
+  // Opdater titel baseret på aktiv karakter
+  if (modalTitle) {
+    modalTitle.textContent = `${patientConfig.name} - ${activeCharacter === 'bodil' ? 'Pårørende' : 'Patient'} Information`;
+  }
   
-  // Build patient information HTML
-  let html = `
-    <div class="info-section">
-      <h4>Grundlæggende Information</h4>
-      <ul class="info-list">
-        <li><strong>Navn:</strong> ${patientConfig.name}</li>
-        <li><strong>Alder:</strong> ${patientConfig.age} år</li>
-        <li><strong>Sygdom:</strong> ${patientConfig.condition}</li>
-        <li><strong>BMI:</strong> ${patientConfig.health_profile.BMI}</li>
-      </ul>
-    </div>
-    
-    <div class="info-section">
-      <h4>Sundhedsprofil</h4>
-      <ul class="info-list">
-        <li><strong>Diagnose:</strong> ${patientConfig.health_profile.diagnosis_years} år</li>
-        <li><strong>HbA1c:</strong> ${patientConfig.health_profile.HbA1c}</li>
-        <li><strong>Nuværende behandling:</strong> ${patientConfig.health_profile.current_treatment.join(', ')}</li>
-        <li><strong>Tidligere behandling:</strong> ${patientConfig.health_profile.previous_treatment.join(', ')}</li>
-      </ul>
-    </div>
-    
-    <div class="info-section">
-      <h4>Symptomer</h4>
-      <ul class="info-list">
-        ${patientConfig.health_profile.symptoms.map(symptom => `<li>${symptom}</li>`).join('')}
-      </ul>
-    </div>
-    
-    <div class="info-section">
-      <h4>Komplikationer</h4>
-      <ul class="info-list">
-        ${patientConfig.health_profile.complications.map(complication => `<li>${complication}</li>`).join('')}
-      </ul>
-    </div>
-    
-    <div class="info-section">
-      <h4>Baggrund</h4>
-      <p>${patientConfig.background}</p>
-    </div>
-  `;
+  // Build patient information HTML baseret på karakter
+  let html = '';
+  
+  if (activeCharacter === 'bodil') {
+    // Bodil specifik information
+    html = `
+      <div class="info-section">
+        <h4>Grundlæggende Information</h4>
+        <ul class="info-list">
+          <li><strong>Navn:</strong> ${patientConfig.name}</li>
+          <li><strong>Alder:</strong> ${patientConfig.age} år</li>
+          <li><strong>Situation:</strong> ${patientConfig.condition}</li>
+        </ul>
+      </div>
+      
+      <div class="info-section">
+        <h4>Baggrund</h4>
+        <ul class="info-list">
+          ${String(patientConfig.background)
+            .split(/\n|\.|\u2022|-\s/)
+            .map(s => s && s.trim())
+            .filter(Boolean)
+            .map(item => `<li>${item}</li>`)
+            .join('')}
+        </ul>
+      </div>
+      
+      <div class="info-section">
+        <h4>Pårørende Information</h4>
+        <ul class="info-list">
+          <li>Pårørende til mor Birthe med type 2-diabetes i 23 år og apoplexi</li>
+          <li>Mor sidder i kørestol og bor på plejehjem</li>
+          <li>Bodil er førtidspensionist pga. dårlig ryg</li>
+          <li>Har tre børn og bor alene</li>
+          <li>Besøger moren næsten dagligt</li>
+          <li>Føler sig magtesløs, frustreret og vred over plejen</li>
+        </ul>
+      </div>
+      
+      <div class="info-section">
+        <h4>Kommunikationsudfordringer</h4>
+        <ul class="info-list">
+          <li>Meget vred og konfronterende i starten</li>
+          <li>Følelsesladet og kritisk</li>
+          <li>Lytter ikke i starten</li>
+          <li>Kan åbne op hvis hun føler sig set og hørt</li>
+        </ul>
+      </div>
+    `;
+  } else {
+    // Mogens specifik information
+    html = `
+      <div class="info-section">
+        <h4>Grundlæggende Information</h4>
+        <ul class="info-list">
+          <li><strong>Navn:</strong> ${patientConfig.name}</li>
+          <li><strong>Alder:</strong> ${patientConfig.age} år</li>
+          <li><strong>Sygdom:</strong> ${patientConfig.condition}</li>
+          <li><strong>BMI:</strong> ${patientConfig.health_profile.BMI}</li>
+        </ul>
+      </div>
+      
+      <div class="info-section">
+        <h4>Sundhedsprofil</h4>
+        <ul class="info-list">
+          <li><strong>Diagnose:</strong> ${patientConfig.health_profile.diagnosis_years} år</li>
+          <li><strong>HbA1c:</strong> ${patientConfig.health_profile.HbA1c}</li>
+          <li><strong>Nuværende behandling:</strong> ${patientConfig.health_profile.current_treatment.join(', ')}</li>
+          <li><strong>Tidligere behandling:</strong> ${patientConfig.health_profile.previous_treatment.join(', ')}</li>
+        </ul>
+      </div>
+      
+      <div class="info-section">
+        <h4>Symptomer</h4>
+        <ul class="info-list">
+          ${patientConfig.health_profile.symptoms.map(symptom => `<li>${symptom}</li>`).join('')}
+        </ul>
+      </div>
+      
+      <div class="info-section">
+        <h4>Komplikationer</h4>
+        <ul class="info-list">
+          ${patientConfig.health_profile.complications.map(complication => `<li>${complication}</li>`).join('')}
+        </ul>
+      </div>
+      
+      <div class="info-section">
+        <h4>Baggrund</h4>
+        <ul class="info-list">
+          ${String(patientConfig.background)
+            .split(/\n|\.|\u2022|-\s/)
+            .map(s => s && s.trim())
+            .filter(Boolean)
+            .map(item => `<li>${item}</li>`)
+            .join('')}
+        </ul>
+      </div>
+    `;
+  }
   
   content.innerHTML = html;
   modal.style.display = 'block';
+  
+  console.log(`📋 Viste ${activeCharacter} information popup`);
 }
 
 function hidePatientInfo() {

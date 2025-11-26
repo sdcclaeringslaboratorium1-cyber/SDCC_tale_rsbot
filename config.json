@@ -29,21 +29,22 @@
         ],
         "BMI": 31.2
       },
-      "image": "images/mogens_lvl1.png",
+      "image": "./images/mogens_lvl1.png",
       "status_images": {
-        "1": "images/mogens_lvl1.png",
-        "2": "images/mogens_lvl2.png", 
-        "3": "images/mogens_lvl3.png",
-        "4": "images/mogens_lvl4.png",
-        "5": "images/mogens_lvl5.png"
+        "1": "./images/mogens_lvl1.png",
+        "2": "./images/mogens_lvl2.png", 
+        "3": "./images/mogens_lvl3.png",
+        "4": "./images/mogens_lvl4.png",
+        "5": "./images/mogens_lvl5.png"
       },
       "voice_id": "Tlb2LE6cWft9rfuR12pd",
       "voice_name": "Mogens 64 (dansk)",
       "audio_files": {
-        "welcome": "audio/mogens_velkomst.mp3",
+        "welcome": "./audio/mogens_velkomst.mp3",
+        "intro_waiting": "./audio/mogensintrowait.mp3",
         "waiting": [
-          "audio/mogens_ny_wait1.mp3",
-          "audio/mogens_ny_wait2.mp3"
+          "./audio/mogens_ny_wait1.mp3",
+          "./audio/mogens_ny_wait2.mp3"
         ]
       },
       "system_prompt": [
@@ -84,6 +85,7 @@
         "base": {
           "stability": 0.7,
           "similarity_boost": 0.8,
+          "style": 0.3,
           "use_speaker_boost": true
         }
       }
@@ -118,11 +120,12 @@
       "• Type 2-diabetes i 12 år",
       "• Nuværende behandling: Metformin + DPP-4-hæmmer, SGLT2-hæmmer",
       "• Tidligere behandling: GLP-1 receptor agonist – seponeret pga. bivirkninger",
+      "• Glucose monitering: Sporadisk",
       "• HbA1c: 88 mmol/mol",
       "• Symptomer: Hyppig vandladning, vægttab, træthed",
       "• Komplikationer: Diabetisk retinopati (laserbehandlet), diabetisk neuropati (uden smerter)",
       "• BMI: 31.2",
-      "• Baggrund: Separeret VVS'er, skeptisk over for behandlingstilbud",
+      "• Baggrund: Fraskilt gymnasielærer, skeptisk over for behandlingstilbud",
       "",
       "OPGAVE:",
       "Vurder sundhedsprofessionellens sidste ytring i forhold til:",
@@ -176,7 +179,7 @@
       ]
     },
     "feedback": {
-      "title": "Feedback",
+      "title": "Sundhedsfaglig vurdering af dit seneste udsagn",
       "placeholder": "Din samtale med Mogens vil blive evalueret her..."
     },
     "audio_overlay": {
@@ -201,13 +204,13 @@
   },
   "api": {
     "openai": {
-      "model": "gpt-4o",
+      "model": "gpt-4",
       "max_tokens": 150,
       "temperature": 0.8,
       "timeout": 15000
     },
     "evaluation": {
-      "model": "gpt-4o",
+      "model": "gpt-4",
       "max_tokens": 200,
       "temperature": 0.7,
       "timeout": 10000

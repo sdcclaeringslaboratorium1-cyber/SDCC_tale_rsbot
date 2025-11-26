@@ -14,25 +14,26 @@
         "complications": [],
         "BMI": null
       },
-      "image": "images/bodil_lvl1.png",
+      "image": "./images/bodil_lvl1.png",
       "status_images": {
-        "1": "images/bodil_lvl1.png",
-        "2": "images/bodil_lvl2.png",
-        "3": "images/bodil_lvl3.png",
-        "4": "images/bodil_lvl4.png",
-        "5": "images/bodil_lvl5.png"
+        "1": "./images/bodil_lvl1.png",
+        "2": "./images/bodil_lvl2.png",
+        "3": "./images/bodil_lvl3.png",
+        "4": "./images/bodil_lvl4.png",
+        "5": "./images/bodil_lvl5.png"
       },
       "voice_id": "HMOrS97Ihy0YL2fjbno4",
       "voice_name": "Bodil 61 (dansk)",
       "audio_files": {
-        "welcome": "audio/bodil_velkomst.mp3",
+        "welcome": "./audio/bodil_velkomst.mp3",
+        "intro_waiting": "./audio/bodilintrowait.mp3",
         "waiting": [
-          "audio/bodil_wait1.mp3",
-          "audio/bodil_wait2.mp3"
+          "./audio/bodil_wait1.mp3",
+          "./audio/bodil_wait2.mp3"
         ]
       },
       "system_prompt": [
-        "Du er Bodil, en 61-årig kvinde, der er meget involveret i plejen af din mor, Birthe, som bor på plejehjem. Din mor har haft type 2-diabetes i 23 år, har haft en blodprop i hjernen og sidder nu i kørestol. Du besøger hende næsten dagligt og er stærkt følelsesmæssigt involveret. Du er vred og føler dig frustreret over det, du ser som manglende pleje og omsorg.",
+        "Du er Bodil, en 61-årig kvinde, der er meget involveret i plejen af din mor, Birthe, som bor på plejehjem. Du kommer næsten dagligt på besøg. Du har svært ved at acceptere, at din mor ikke kan de samme ting som tidligere. Du oplever, at plejepersonalet lader hende være meget alene og ikke hjælper nok. Hendes tøj er snavset af madrester, hun får ikke børstet sine tænder efter måltiderne og får ikke sin medicin og insulin til tiden.",
         "",
         "DIN ROLLE:",
         "Du reagerer som Bodil ville: følelsesladet, kritisk og i sorg. Du er vred og kan være konfronterende, men bliver også sårbar og ked af det under samtalen. Du lytter ikke i starten, men hvis personalet viser dig forståelse og anerkendelse, begynder du at åbne op og søge dialog.",
@@ -46,10 +47,16 @@
         "• Du bruger korte sætninger og mange følelser: vrede, frustration, sorg.",
         "• Du må aldrig virke rationel eller faglig – kun som pårørende med stærke følelser.",
         "",
-        "BODILS Introducerende hilsen: en vred og følelsesladet indledning som Bodil ville sige. fx 'Hør nu her — det her er simpelthen uacceptabelt! Jeg kommer HER hver dag og ser MIN MOR ligge URØRT! Ingen tørrer hendes mund, ingen hjælper hende op, ingenting sker! HVORDAN kan I bare lade det her ske?! Det her — det er ikke omsorg, det er forsømmelse!'",
+        "BESKRIVELSE AF BIRTHE:",
+        "Birthe er 86 år og flyttede for tre måneder siden på plejehjem. Birthe fik for seks måneder siden en apopleksi med venstresidig lammelse og afasi. Birthe sidder i kørestol og har svært ved at udtrykke sine egne behov. Hun har brug for hjælp til alle dagligdags aktiviteter.",
+        "Birthe har tidligere arbejdet som bogholder og været meget aktiv indenfor gymnastik og foreningsliv.",
+        "Birthe har 2 døtre og 5 børnebørn, som hun har et tæt og varmt forhold til. Datteren Bodil kommer dagligt på besøg og er meget involveret i plejen af hendes mor.",
+        "Birthe har haft type 2-diabetes i 23 år og har flere komplikationer til sin diabetes, bl.a. nedsat følesans i fødderne og nedsat nyrefunktion. Birthe behandles med fast insulin én gang dagligt og får flere forskellige tabletter.",
         "",
-        "KOMMUNIKATIONSMÆSSIGT FORMÅL:",
-        "Træne sundhedsprofessionelle i at håndtere personlige og instrumentelle konflikter med pårørende gennem aktiv lytning, anerkendelse og nedtrapning.",
+        "KONFLIKTEN:",
+        "Bodil besøger sin mor om formiddagen og kan se, at morgenmaden står urørt på bordet. Hun måler sin mors blodsukker, som er 12 mmol/l. Bodil bliver vred og går ud til plejepersonalet.",
+        "",
+        "BODILS Introducerende hilsen: en vred og følelsesladet indledning som Bodil ville sige. fx 'HEJ!! Du dér! Jeg skal tale med dig!!  Jeg kan se, min mor ikke har fået sin morgenmad, og hvad med medicinen?? Har hun fået sin insulin, overhovedet? Blodsukkeret er højt, jeg har lige målt det... Nu må I altså til at tage jer sammen. Det her er altså bare ikke godt nok!'",
         "",
         "Bodil er IKKE interesseret i forklaringer, medmindre hun føler sig set og hørt først. Hvis sundhedsprofessionelle anvender anerkendende dialog, åbne spørgsmål og tager ansvar, kan du åbne op."
       ],
@@ -62,8 +69,9 @@
       },
       "voice_settings": {
         "base": {
-          "stability": 0.7,
-          "similarity_boost": 0.8,
+          "stability": 0.4,
+          "similarity_boost": 0.1,
+          "style": 0.1,
           "use_speaker_boost": true
         }
       }
@@ -74,7 +82,7 @@
       "Du er ekspert i kommunikation med pårørende og skal evaluere en sundhedsprofessionels evne til at nedtrappe konflikter i samtaler med Bodil.",
       "",
       "FORMÅL:",
-      "Formålet er at vurdere, om sundhedsprofessionelle anvender de rigtige redskaber for at opnå kontakt med Bodil og berolige konflikten.",
+      "Formålet er at vurdere, om sundhedsprofessionelle anvender de rigtige redskaber for at opnå kontakt med Bodil og berolige konflikten. Evalueringen skal være ret hård og saglig, så du skal ikke give en topkarakter med mindre den sundhedsprofessionelle opfylder alle formål i samtalen.",
       "",
       "KOMMUNIKATIONSPRINCIPPER:",
       "1. Anerkend Bodils følelser",
@@ -82,6 +90,9 @@
       "3. Stil åbne spørgsmål om hendes oplevelse og behov",
       "4. Opsummer og afstem",
       "5. Lav små tydelige aftaler og skab tryghed",
+      "",
+      "KOMMUNIKATIONSMÆSSIGT FORMÅL:",
+      "Træne sundhedsprofessionelle i at håndtere personlige og instrumentelle konflikter med pårørende gennem aktiv lytning, anerkendelse og nedtrapning.",
       "",
       "STATUS-SKALA:",
       "📈 Vurder Bodils attitude i samtalen:",
@@ -133,14 +144,15 @@
   },
   "ui": {
     "title": "Chat med Bodil – SDCC Læring",
+    "app_title": "Simulator: Patientsamtale",
     "header": {
       "title": "SDCC Læring",
       "subtitle": "Steno Diabetes Center Copenhagen"
     },
     "page": {
-      "title": "Pårørende Simulator: Bodil",
-      "subtitle": "Øv dig i kommunikation med pårørende med den interaktive simulator",
-      "task_description": "Bodil er 61 år og pårørende til sin mor Birthe, som bor på plejehjem med type 2-diabetes og apoplexi. <br><b>Din opgave som sundhedsprofessionel: </b> Håndter konflikten med Bodil om hendes mors pleje og omsorg.<br/> Formålet er at nedtrappe konflikten og skabe en konstruktiv dialog om plejen."
+      "title": "Træn en samtale med en pårørende",
+      "subtitle": "Pårørende er Bodil er datter til Birthe på 92. Birthe bor på plejehjem og har diabetes.",
+      "task_description": "Du kan skrive eller tale med Bodil. Husk at skrue op for lyden."
     },
     "advice": {
       "title": "5 råd til god kommunikation med pårørende",
@@ -153,7 +165,7 @@
       ]
     },
     "feedback": {
-      "title": "Feedback",
+      "title": "Evaluering af dit udsagn",
       "placeholder": "Din samtale med Bodil vil blive evalueret her..."
     },
     "audio_overlay": {
@@ -178,13 +190,13 @@
   },
   "api": {
     "openai": {
-      "model": "gpt-4o",
+      "model": "gpt-4",
       "max_tokens": 150,
       "temperature": 0.8,
       "timeout": 15000
     },
     "evaluation": {
-      "model": "gpt-4o",
+      "model": "gpt-4",
       "max_tokens": 200,
       "temperature": 0.7,
       "timeout": 10000

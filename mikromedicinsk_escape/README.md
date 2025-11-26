@@ -117,3 +117,28 @@ Appen hjælper med at forstå:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

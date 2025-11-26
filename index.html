@@ -12,7 +12,14 @@
   <!-- Audio Control Overlay -->
   <div id="audioOverlay" class="audio-overlay">
     <div class="audio-overlay-content">
-      <h3>Skru op for din lyd</h3>
+      <div class="intro-box">
+        <h3 class="intro-title"></h3>
+        <h4 class="intro-subtitle"></h4>
+        <br/>
+        <p class="intro-instruction"></p>
+      </div>
+      <br/>
+    
       <button id="startAudioBtn" class="start-audio-btn">Klar</button>
       <p class="browser-warning">(Hvis Chatbot ikke virker, skift fra MS Edge browseren)</p>
     </div>
@@ -30,6 +37,13 @@
     </div>
   </header>
 
+  <!-- App Title (optional, shown for certain characters) -->
+  <div class="app-title-container" id="appTitleContainer" style="display: none;">
+    <div class="container">
+      <h1 class="app-title" id="appTitle"></h1>
+    </div>
+  </div>
+
   <!-- Main Content -->
   <main class="main">
     <div class="container">
@@ -43,6 +57,7 @@
       <!-- Page Header -->
       <div class="page-header">
         <h2>Patient Samtale: Mogens Mortensen</h2>
+        <p class="subtitle"></p>
         <p class="task-description">Mogens er 64 og har haft diabetes i 10 år. <br/><b>Din opgave er at tale med Mogens om at måle sit blodsukker hver dag morgen og aften med henblik på muligvis at starte på insulinbehandling</b></p>
           
       </div>
@@ -52,20 +67,21 @@
         <!-- Chat Interface -->
         <div class="chat-container">
           <div class="chat-header">
+            <button class="info-button" id="infoButton" title="Se patientdata">Data om <br/> patienten</button>
          
           
             <div class="mogens-profile">
               <div class="mogens-image" style="position: relative;">
-                <img src="images/mogens_lvl1.png" alt="Mogens Mortensen" class="mogens-portrait">
-                <button class="info-button" id="infoButton" title="Se Mogens' information">i</button>
+                <img src="./images/mogens_lvl1.png" alt="Mogens Mortensen" class="mogens-portrait">
+                <div class="status-overlay">
+                  <div class="status-bar">
+                    <div class="status-fill" id="statusFill"></div>
+                    <div class="status-text" id="statusText"></div>
+                  </div>
+                </div>
               </div>
               <div class="mogens-status-info">
                 <h4 id="mogensStatus">Patientens nuværende attitude: Indlæser...</h4>
-                <div class="status-indicator">
-                  <div class="status-bar">
-                    <div class="status-fill" id="statusFill"></div>
-                  </div>
-                </div>
               </div>
             </div>
            </div>
@@ -77,7 +93,7 @@
                 <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 0010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" fill="currentColor"/>
               </svg>
             </button>
-            <input type="text" id="prompt" placeholder="Skriv din besked til Mogens..." class="chat-input" />
+            <input type="text" id="prompt" placeholder="Skriv din besked..." class="chat-input" />
             <button onclick="sendMessage()" class="send-button">Send</button>
           </div>
 
@@ -99,7 +115,7 @@
           
           <!-- Feedback Box -->
           <div class="feedback-box">
-            <h3>Feedback</h3>
+            <h3>Evaluering af dit udsagn</h3>
             <div id="feedbackContent" class="feedback-content">
               <p class="feedback-placeholder">Din samtale med Mogens vil blive evalueret her...</p>
             </div>
