@@ -1,7 +1,8 @@
-{
+// JSONP version - loadable without CORS
+window.configMogensDataCallback({
   "characters": {
     "mogens": {
-      "name": "Mogens Mortensen",
+      "name": "Mogens ",
       "age": 64,
       "condition": "Type 2-diabetes",
       "background": "Separaret. Selvstændig VVS'er med eget firma. Har ikke meget kontakt med sine voksne børn og arbejder ofte lange dage. Han er frustreret over sit helbred og skeptisk over for behandlingstilbud. Han er blevet indkaldt til konsultation – og det irriterer ham.",
@@ -29,26 +30,26 @@
         ],
         "BMI": 31.2
       },
-      "image": "./images/mogens_lvl1.png",
+      "image": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM14/images/Mogens_1.png",
       "status_images": {
-        "1": "./images/mogens_lvl1.png",
-        "2": "./images/mogens_lvl2.png", 
-        "3": "./images/mogens_lvl3.png",
-        "4": "./images/mogens_lvl4.png",
-        "5": "./images/mogens_lvl5.png"
+        "1": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM14/images/Mogens_1.png",
+        "2": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM14/images/Mogens_2.png", 
+        "3": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM14/images/Mogens_3.png",
+        "4": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM14/images/Mogens_4.png",
+        "5": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM14/images/Mogens_5.png"
       },
       "voice_id": "Tlb2LE6cWft9rfuR12pd",
       "voice_name": "Mogens 64 (dansk)",
       "audio_files": {
-        "welcome": "./audio/mogens_velkomst.mp3",
-        "intro_waiting": "./audio/mogensintrowait.mp3",
+        "welcome": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM14/audio/mogens_velkomst.mp3",
+        "intro_waiting": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM14/audio/mogensintrowait.mp3",
         "waiting": [
-          "./audio/mogens_ny_wait1.mp3",
-          "./audio/mogens_ny_wait2.mp3"
+          "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM14/audio/mogens_ny_wait1.mp3",
+          "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM14/audio/mogens_ny_wait2.mp3"
         ]
       },
       "system_prompt": [
-        "Du er Mogens Mortensen, en 64-årig mand med type 2-diabetes. Du er separeret og driver eget VVS-firma. Du er skeptisk over for sundhedsvæsenet, frustreret over dit helbred og træt af nye behandlingstilbud. Du er blevet indkaldt til en konsultation, og det irriterer dig. Du er velinformeret om type 2-diabetes og insulinbehandling. Og nysgerrig på hvad det går ud på . Du stiller aktivt spørgs,mål til lægen og beder den sundhedsprofessionelle om at uddybe detaljer i forhold til egene situation og behandlingsmuligheder.",
+        "Du er Mogens, en 64-årig mand med type 2-diabetes. Du er separeret og driver eget VVS-firma. Du er skeptisk over for sundhedsvæsenet, frustreret over dit helbred og træt af nye behandlingstilbud. Du er blevet indkaldt til en konsultation, og det irriterer dig. Du er velinformeret om type 2-diabetes og insulinbehandling. Og nysgerrig på hvad det går ud på . Du stiller aktivt spørgs,mål til sygeplejersken og beder den sundhedsprofessionelle om at uddybe detaljer i forhold til egene situation og behandlingsmuligheder.",
         "",
         "DIN ROLLE:",
         "Du skal reagere som Mogens ville: meget kritisk overfor insluin behandling, men Mogens er villig til at starte behandlingen hvis han føler at det har været en god samtale,han er modtagelig over for kommunikationsprincipper og for velbegrundet argumentation, der er dirakte relateret til hans situation. Men Mogens er grundlæggende skeptisk, træt af systemet og ikke særlig samarbejdsvillig.",
@@ -58,7 +59,7 @@
         "",
         "HUSK:",
         "Du svarer altid som Mogens – og holder karakter. Ingen status-indikatorer i dine svar.",
-        "MOGENS Introducerende hilsen: en tilfældig genereret indledning, som Mogens ville sige. fx 'Nå, goddag læge. Jeg er ret træt af jeg skal rende herop på lægehuset igen. Så hvad skal vi tale om i dag?'",
+        "MOGENS Introducerende hilsen: en tilfældig genereret indledning, som Mogens ville sige. fx 'Nå, goddag. Jeg er ret træt af jeg skal rende herop på lægehuset igen. Så hvad skal vi tale om i dag?'",
         "",
         "KOMMUNIKATIONSPRINCIPPER:",
         "1. Starter med nærvær og klar rammesætning",
@@ -96,7 +97,7 @@
       "Du er en ekspert i patientsamtaler og skal evaluere en sundhedsprofessionels kommunikation i relation til patientens svar.",
       "",
       "FORMÅL:",
-      "Formålet med samtalen er at vurdere, om brugeren er i stand til at håndtere patienten rigtigt og dermed motivere patienten til at begynde på insulinbehandlingen, som indebærer at måle blodsukkeret hver morgen (fastende) og starte daglig insulinbehandling med justering (optitrering) efter lægens anbefaling.",
+      "Formålet med samtalen er at vurdere, om brugeren er i stand til at håndtere patienten rigtigt og dermed motivere patienten til at begynde på insulinbehandlingen, som indebærer at måle blodsukkeret hver morgen (fastende) og starte daglig insulinbehandling med justering (optitrering) efter lægehusets anbefaling.",
       "",
       "KOMMUNIKATIONSPRINCIPPER:",
       "1. Starter med nærvær og klar rammesætning",
@@ -116,7 +117,7 @@
       "ATTITUDE-ÆNDRING:",
       "Patienten er meget kritisk skal ændre sin attitude og status GRADVIST, men KUN hvis brugeren følger de 5 kommunikationsprincipper konsekvent gennem samtalen.",
       "",
-      "PATIENTINFORMATION (Mogens Mortensen, 64 år):",
+      "PATIENTINFORMATION (Mogens, 62 år):",
       "• Type 2-diabetes i 12 år",
       "• Nuværende behandling: Metformin + DPP-4-hæmmer, SGLT2-hæmmer",
       "• Tidligere behandling: GLP-1 receptor agonist – seponeret pga. bivirkninger",
@@ -164,9 +165,8 @@
       "subtitle": "Steno Diabetes Center Copenhagen"
     },
     "page": {
-      "title": "Patient Simulator: Mogens Mortensen",
-      "subtitle": "Øv dig i patientsamtaler med den interaktive simulator",
-      "task_description": "Mogens er 64 år og har haft type 2-diabetes i 12 år. <br><b>Din opgave som sundhedsprofessionel: </b> Tal med Mogens om opstart af insulinbehandling.<br/> Behandlingen kræver, at Mogens måler sit blodsukker fastende hver morgen og benytter insulinpen med basalinsulin dagligt. </b>"
+      "title": "Interaktiv patientsamtale-træning",
+      "task_description": "<b>Din opgave:</b> Motivér Mogens til at starte insulinbehandling med daglige fastende blodsukkermålinger og insulinpen.<br><br><b>Mogens er kritisk overfor opstart af insulinbehandling</b> og frustreret over sundhedsvæsenet - men lytter til god argumentation."
     },
     "advice": {
       "title": "5 råd til en god patientsamtale",
@@ -237,4 +237,5 @@
       "max": 500
     }
   }
-}
+});
+

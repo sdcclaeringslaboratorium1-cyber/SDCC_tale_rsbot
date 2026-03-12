@@ -1,0 +1,143 @@
+<!-- ========================================== -->
+<!-- KOMPLET HTML TIL UMBRACO HTML-ELEMENT     -->
+<!-- VERSION: MOGENS (DDM13)                   -->
+<!-- Alt tekstindhold injekteres fra script.js -->
+<!-- ========================================== -->
+
+<!-- 1. Load CSS -->
+<link rel="stylesheet" href="https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/style.css">
+
+<!-- 2. INLINE JSONP callbacks (VIGTIGT: SKAL VÆRE FØR JSONP-FILER!) -->
+<script>
+(function() {
+    'use strict';
+    window.configMogensData = null;
+    window.configBodilData = null;
+    window.configMogensDataCallback = function(data) { window.configMogensData = data; };
+    window.configBodilDataCallback = function(data) { window.configBodilData = data; };
+})();
+</script>
+
+<!-- 3. Load config data via JSONP (INGEN CORS!) -->
+<script src="https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/config_mogens.js"></script>
+<script src="https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/config_bodil.js"></script>
+
+<!-- 4. HTML Skeleton – tekstindhold sættes af script.js via updateUIWithConfig() -->
+<header class="header">
+  <div class="container_bot">
+    <div class="header-content">
+      <div class="logo">
+        <h1></h1>
+        <p></p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="app-title-container" id="appTitleContainer" style="display: none;">
+  <div class="container_bot">
+    <h1 class="app-title" id="appTitle"></h1>
+  </div>
+</div>
+
+<main class="main_bot">
+  <div class="container_bot">
+    <div class="performance-dashboard-mini" style="display: none;">
+      <span class="metric-mini">Første: <span id="firstResponseTime">-</span></span>
+      <span class="metric-mini">Gns: <span id="averageResponseTime">-</span></span>
+      <span class="metric-mini">Antal: <span id="responseCount">0</span></span>
+    </div>
+
+    <div class="page-header">
+      <h2></h2>
+      <p class="subtitle"></p>
+      <p class="task-description"></p>
+    </div>
+
+    <div class="layout-container">
+      <div class="chat-container">
+        <div id="audioOverlay" class="audio-overlay">
+          <div class="audio-overlay-content">
+            <div class="intro-box">
+              <h3 class="intro-title"></h3>
+              <h4 class="intro-subtitle"></h4>
+              <br/>
+              <p class="intro-instruction"></p>
+            </div>
+            <br/>
+            <button id="startAudioBtn" class="start-audio-btn"></button>
+            <p class="browser-warning"></p>
+          </div>
+        </div>
+
+        <div class="chat-header">
+          <button class="info-button" id="infoButton"></button>
+          <div class="mogens-profile">
+            <div class="mogens-image" style="position: relative;">
+              <img src="" alt="" class="mogens-portrait">
+              <div class="status-overlay">
+                <div class="status-bar">
+                  <div class="status-fill" id="statusFill"></div>
+                  <div class="status-text" id="statusText"></div>
+                </div>
+              </div>
+            </div>
+            <div class="mogens-status-info">
+              <h4 id="mogensStatus"></h4>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <button id="micButton" class="mic-button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" fill="currentColor"/>
+              <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 0010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" fill="currentColor"/>
+            </svg>
+          </button>
+          <div class="textarea-wrapper">
+            <textarea id="prompt" class="chat-input" rows="1"></textarea>
+            <button id="clearPromptBtn" class="clear-prompt-btn" title="Slet tekst">✕</button>
+          </div>
+          <button onclick="sendMessage()" class="send-button">Send</button>
+        </div>
+
+        <div class="chat-messages" id="response"></div>
+        <audio id="audioPlayer" controls style="display:none;" class="audio-player"></audio>
+      </div>
+
+      <div class="advice-box">
+        <h3></h3>
+        <ol class="advice-list"></ol>
+        <div class="feedback-box">
+          <h3></h3>
+          <div id="feedbackContent" class="feedback-content">
+            <p class="feedback-placeholder"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="infoModal" class="info-modal">
+  <div class="info-modal-content">
+    <span class="info-modal-close" id="infoModalClose">&times;</span>
+    <h3 id="infoModalTitle"></h3>
+    <div id="infoModalContent"></div>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container_bot">
+    <p>&copy; 2024 Steno Diabetes Center Copenhagen. Alle rettigheder forbeholdes.</p>
+  </div>
+</footer>
+
+<!-- 5. Vælg karakter: skift til 'bodil' for Bodil-versionen -->
+<script>
+  window.FORCE_CHARACTER = 'mogens';
+</script>
+
+<!-- 6. Load main script SIDST -->
+<script src="https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/script.js"></script>

@@ -1,4 +1,5 @@
-{
+// JSONP version - loadable without CORS
+window.configBodilDataCallback({
   "characters": {
     "bodil": {
       "name": "Bodil",
@@ -14,22 +15,22 @@
         "complications": [],
         "BMI": null
       },
-      "image": "./images/bodil_lvl1.png",
+      "image": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl1.png",
       "status_images": {
-        "1": "./images/bodil_lvl1.png",
-        "2": "./images/bodil_lvl2.png",
-        "3": "./images/bodil_lvl3.png",
-        "4": "./images/bodil_lvl4.png",
-        "5": "./images/bodil_lvl5.png"
+        "1": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl1.png",
+        "2": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl2.png",
+        "3": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl3.png",
+        "4": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl4.png",
+        "5": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl5.png"
       },
       "voice_id": "HMOrS97Ihy0YL2fjbno4",
       "voice_name": "Bodil 61 (dansk)",
       "audio_files": {
-        "welcome": "./audio/bodil_velkomst.mp3",
-        "intro_waiting": "./audio/bodilintrowait.mp3",
+        "welcome": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/audio/bodil_velkomst.mp3",
+        "intro_waiting": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/audio/bodilintrowait.mp3",
         "waiting": [
-          "./audio/bodil_wait1.mp3",
-          "./audio/bodil_wait2.mp3"
+          "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/audio/bodil_wait1.mp3",
+          "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/audio/bodil_wait2.mp3"
         ]
       },
       "system_prompt": [
@@ -223,4 +224,5 @@
       "max": 500
     }
   }
-}
+});
+

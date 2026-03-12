@@ -13,6 +13,7 @@ let currentImagePath = null; // Holder styr på nuværende billede-sti
 // Tale-til-tekst variabler
 let recognition;
 let isRecording = false;
+let accumulatedTranscript = '';
 
 // Ventelyd variabel
 let waitingAudio = null;
@@ -71,8 +72,18 @@ function isLocalHostEnv() {
   );
 }
 
-// Funktion: Hent aktiv karakter fra URL parameter
+// Funktion: Hent aktiv karakter fra URL parameter eller forced valg
 function getActiveCharacter() {
+  // FØRST: Tjek om karakter er tvunget via window.FORCE_CHARACTER (Umbraco mode)
+  if (window.FORCE_CHARACTER) {
+    const validCharacters = ['mogens', 'bodil'];
+    if (validCharacters.includes(window.FORCE_CHARACTER.toLowerCase())) {
+      console.log(`🎯 Bruger forced karakter: ${window.FORCE_CHARACTER}`);
+      return window.FORCE_CHARACTER.toLowerCase();
+    }
+  }
+  
+  // ANDEN: Tjek URL parameter
   const urlParams = new URLSearchParams(window.location.search);
   const character = urlParams.get('character');
   
@@ -88,10 +99,8 @@ function getActiveCharacter() {
 
 // Globale variabler for aktiv karakter
 let activeCharacter = getActiveCharacter();
-let configFileName = `config${activeCharacter === 'mogens' ? '' : '_' + activeCharacter}.json`;
 
 console.log(`🎭 Aktiv karakter: ${activeCharacter}`);
-console.log(`📄 Config fil: ${configFileName}`);
 console.log(`🔍 URL search params:`, window.location.search);
 console.log(`🔍 Character parameter:`, new URLSearchParams(window.location.search).get('character'));
 
@@ -476,22 +485,24 @@ function getInitialGreetingFromConfig() {
 function initSpeechRecognition() {
   if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = false;
     recognition.lang = 'da-DK'; // Dansk sprog
-    
+
     recognition.onresult = function(event) {
-      const transcript = event.results[0][0].transcript;
-      document.getElementById('prompt').value = transcript;
-      // Automatisk send beskeden når optagelsen slutter
-      sendMessage();
+      const transcript = event.results[event.results.length - 1][0].transcript;
+      const promptEl = document.getElementById('prompt');
+      promptEl.value = (promptEl.value + ' ' + transcript).trimStart();
+      autoResizePrompt();
+      const clearBtnEl = document.getElementById('clearPromptBtn');
+      if (clearBtnEl) clearBtnEl.style.display = 'block';
     };
-    
+
     recognition.onerror = function(event) {
       console.error('Tale-genkendelse fejl:', event.error);
       stopRecording();
     };
-    
+
     recognition.onend = function() {
       stopRecording();
     };
@@ -517,6 +528,13 @@ function stopRecording() {
     isRecording = false;
     updateMicButton(false);
   }
+}
+
+function autoResizePrompt() {
+  const el = document.getElementById('prompt');
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
 }
 
 // Opdater mikrofon-knappens udseende
@@ -566,6 +584,13 @@ async function sendMessage() {
   if (!userMessage) return;
 
   console.log(`[${requestId}] 📝 Brugerbesked: "${userMessage}"`);
+
+  // Tøm inputfeltet og nulstil talestrøm med det samme
+  promptInput.value = "";
+  autoResizePrompt();
+
+  // Stop optagelse mens Mogens tænker og taler
+  stopRecording();
 
   // Deaktiver input og send-knap
   setInputState(false);
@@ -736,9 +761,6 @@ async function sendMessage() {
     console.error(`[${requestId}] ❌ Fejl ved afspilning af ventelyd:`, err);
   }
 
-  // Tøm inputfeltet
-  promptInput.value = "";
-  
   // Beregn og log performance
   const totalTime = Date.now() - startTime;
   if (isFirstMessage) {
@@ -856,6 +878,8 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
               promptInput.focus();
             }
           }
+          // Genstart mikrofon automatisk
+          startRecording();
           audioPlayer.onended = null;
         };
         audioPlayer.play();
@@ -910,7 +934,7 @@ function showInitialLoader() {
       text.style.color = '#374151';
       text.style.fontSize = '0.95rem';
       const patientName = (patientConfig && patientConfig.name) || 'Patienten';
-      text.textContent = `${patientName} forbereder sig`;
+      text.textContent = `${patientName} tænker sig om`;
 
       loader.appendChild(dot);
       loader.appendChild(text);
@@ -931,7 +955,7 @@ function showInitialLoader() {
         const t = document.getElementById('initialLoaderText');
         if (t) {
           const patientName = (patientConfig && patientConfig.name) || 'Patienten';
-          t.textContent = `${patientName} forbereder sig` + '.'.repeat(dots);
+          t.textContent = `${patientName} tænker sig om` + '.'.repeat(dots);
         }
       }, 500);
     } else {
@@ -986,7 +1010,7 @@ function showWaitingLoader() {
     text.style.color = '#374151';
     text.style.fontSize = '0.95rem';
     const patientName = (patientConfig && patientConfig.name) || 'Patienten';
-    text.textContent = `${patientName} forbereder sig`;
+    text.textContent = `${patientName} tænker sig om`;
 
     loader.appendChild(dot);
     loader.appendChild(text);
@@ -1004,7 +1028,7 @@ function showWaitingLoader() {
       const t = document.getElementById('waitingLoaderText');
       if (t) {
         const patientName = (patientConfig && patientConfig.name) || 'Patienten';
-        t.textContent = `${patientName} forbereder sig` + '.'.repeat(dots);
+        t.textContent = `${patientName} tænker sig om` + '.'.repeat(dots);
       }
     }, 500);
   } catch (e) {
@@ -1647,7 +1671,7 @@ function setInputState(active) {
     if (activeCharacter === 'bodil') {
       promptInput.placeholder = 'Hvad vil du sige til Bodil...';
     } else {
-      promptInput.placeholder = `Skriv din besked til ${(patientConfig && patientConfig.name) || 'patienten'}...`;
+      promptInput.placeholder = `Skriv eller indtal din besked til ${(patientConfig && patientConfig.name) || 'patienten'}...`;
     }
     sendButton.disabled = false;
     sendButton.textContent = "Send";
@@ -1715,166 +1739,45 @@ function displayFeedback(evaluation) {
 // Funktion: Hent konfiguration fra server
 async function loadConfig() {
   try {
-    // For FTP deployment: Prøv først lokal config.json direkte
     console.log('🔄 Indlæser konfiguration...');
     
-    // Tjek om vi er på en lokal server eller FTP
-    const isLocalServer = window.location.protocol === 'file:' || 
-                         window.location.hostname === 'localhost' || 
-                         window.location.hostname === '127.0.0.1';
-    
-    if (isLocalServer) {
-      // På lokal server: Prøv API først, derefter lokal config
-      let response;
-      try {
-        response = await fetch(apiUrl(`/api/config?character=${activeCharacter}`), { 
-          signal: AbortSignal.timeout(3000) // 3 sek timeout
-        });
-      } catch (err) {
-        console.log('Lokal server ikke tilgængelig, bruger lokal config...');
-        response = null;
-      }
-
-      if (!response || !response.ok) {
-        await loadLocalConfig();
-        return;
-      }
-
-      try {
-        config = await response.json();
-        console.log('✅ Konfiguration indlæst fra lokal server');
-      } catch (e) {
-        console.log('JSON parse fejlede, bruger lokal config...');
-        await loadLocalConfig();
-        return;
-      }
+    // JSONP data (Umbraco embedded mode)
+    if (activeCharacter === 'mogens' && window.configMogensData) {
+      console.log('✅ Bruger JSONP config for Mogens (embedded mode)');
+      config = window.configMogensData;
+    } else if (activeCharacter === 'bodil' && window.configBodilData) {
+      console.log('✅ Bruger JSONP config for Bodil (embedded mode)');
+      config = window.configBodilData;
     } else {
-      // På FTP: Brug direkte lokal config.json
-      console.log('🌐 FTP deployment detekteret, bruger lokal config...');
-      await loadLocalConfig();
-      return;
+      // Lokal server API (lokal development)
+      console.log('💡 JSONP data ikke fundet, henter fra lokal server API...');
+      const response = await fetch(apiUrl(`/api/config?character=${activeCharacter}`), {
+        signal: AbortSignal.timeout(3000)
+      });
+      if (!response || !response.ok) {
+        throw new Error(`Lokal server API ikke tilgængelig (${response?.status})`);
+      }
+      config = await response.json();
+      console.log('✅ Konfiguration indlæst fra lokal server');
     }
     
-    // Sæt aktiv patient
     patientConfig = (config && config.characters && config.characters[activeCharacter]) ? config.characters[activeCharacter] : null;
     
     console.log(`🎭 Søger efter karakter: ${activeCharacter}`);
     console.log(`📋 Tilgængelige karakterer:`, config.characters ? Object.keys(config.characters) : 'Ingen');
     console.log(`👤 PatientConfig sat:`, patientConfig ? patientConfig.name : 'Ikke fundet');
+    console.log('✅ Konfiguration indlæst korrekt');
     
-    console.log('✅ Konfiguration og status_images indlæst korrekt');
-    
-    // Opdater UI med konfigurationen
     await updateUIWithConfig();
     
-    // Sæt initial status - vent lidt for at sikre DOM er klar
     setTimeout(async () => {
-      // Brug central funktion for konsistent status opdatering
       await updateAllStatusElements(mogensStatus, 'initial_timeout');
     }, 500);
     
-    // Start pre-generering af intro lyd i baggrunden
     console.log('🚀 Starter pre-generering af intro lyd...');
     preGenerateIntroAudio();
   } catch (error) {
     console.error('❌ Fejl ved indlæsning af konfiguration:', error);
-    console.log('Forsøger at bruge lokal config...');
-    await loadLocalConfig();
-  }
-}
-
-// Funktion: Indlæs lokal config fil som fallback
-async function loadLocalConfig() {
-  try {
-    console.log(`📁 Indlæser lokal ${configFileName}...`);
-    const response = await fetch(`./${configFileName}`, {
-      signal: AbortSignal.timeout(5000) // 5 sek timeout
-    });
-    
-    if (response.ok) {
-      config = await response.json();
-      console.log('✅ Lokal konfiguration indlæst');
-      
-      // Sæt aktiv patient
-      patientConfig = (config && config.characters && config.characters[activeCharacter]) ? config.characters[activeCharacter] : null;
-      
-      console.log(`🎭 Søger efter karakter: ${activeCharacter}`);
-      console.log(`📋 Tilgængelige karakterer:`, config.characters ? Object.keys(config.characters) : 'Ingen');
-      console.log(`👤 PatientConfig sat:`, patientConfig ? patientConfig.name : 'Ikke fundet');
-      
-      console.log('✅ Lokal konfiguration og status_images indlæst korrekt');
-      
-      // Opdater UI med konfigurationen
-      await updateUIWithConfig();
-      
-      // Sæt initial status - vent lidt for at sikre DOM er klar
-      setTimeout(async () => {
-        // Brug central funktion for konsistent status opdatering
-        await updateAllStatusElements(mogensStatus, 'initial_local_timeout');
-      }, 100); // Reduceret fra 500ms til 100ms
-      
-      // Start pre-generering af intro lyd i baggrunden
-      console.log('🚀 Starter pre-generering af intro lyd (lokal config)...');
-      preGenerateIntroAudio();
-    } else {
-      throw new Error(`Lokal ${configFileName} ikke fundet`);
-    }
-  } catch (error) {
-    console.error('❌ Fejl ved indlæsning af lokal konfiguration:', error);
-    console.log('🔄 Bruger minimal fallback konfiguration...');
-    
-    // Bruger en minimal fallback config
-    config = {
-      characters: {
-        mogens: {
-          name: "Mogens Mortensen",
-          audio_files: {
-            welcome: "audio/mogens_velkomst.mp3",
-            waiting: ["audio/mogens_ny_wait1.mp3", "audio/mogens_ny_wait2.mp3"]
-          },
-          status_descriptions: {
-            "1": "Meget kritisk overfor dig",
-            "2": "Kritisk og tøvende", 
-            "3": "Lidt åben og spørgende",
-            "4": "Tæt på accept og samarbejdsvillig",
-            "5": "Positiv og indvilger i målinger"
-          },
-          status_images: {
-            "1": "./images/mogens_lvl1.png",
-            "2": "./images/mogens_lvl2.png", 
-            "3": "./images/mogens_lvl3.png",
-            "4": "./images/mogens_lvl4.png",
-            "5": "./images/mogens_lvl5.png"
-          }
-        }
-      },
-      audio: {
-        welcome_volume: 0.8,
-        waiting_volume: 0.6,
-        fade_out_duration: 300,
-        fade_out_steps: 10,
-        play_delay: 300
-      },
-      ui: {
-        title: "Chat med Mogens – SDCC Læring",
-        header: { title: "SDCC Læring", subtitle: "Steno Diabetes Center Copenhagen" }
-      }
-    };
-    
-    patientConfig = config.characters[activeCharacter];
-    await updateUIWithConfig();
-    
-    // Sæt initial status hurtigere for fallback
-    setTimeout(async () => {
-      // Brug central funktion for konsistent status opdatering
-      await updateAllStatusElements(mogensStatus, 'fallback_timeout');
-    }, 100);
-    
-    // Start pre-generering af intro lyd i baggrunden
-    console.log('🚀 Starter pre-generering af intro lyd (fallback config)...');
-    preGenerateIntroAudio();
-    
-    console.log('⚠️ Bruger minimal fallback konfiguration');
   }
 }
 
@@ -2048,7 +1951,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (activeCharacter === 'bodil') {
       promptInput.placeholder = 'Hvad vil du sige til Bodil...';
     } else {
-      promptInput.placeholder = `Skriv din besked til ${(patientConfig && patientConfig.name) || 'patienten'}...`;
+      promptInput.placeholder = `Skriv eller indtal din besked til ${(patientConfig && patientConfig.name) || 'patienten'}...`;
     }
   }
   
@@ -2058,11 +1961,48 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Lyt efter klik på "Klar" knappen for at starte lyden
   document.getElementById('startAudioBtn').addEventListener('click', startAudioAndHideOverlay);
   
-  // Lyt efter Enter-tast i inputfeltet og send besked
+  // Lyt efter Enter-tast i inputfeltet og send besked (Shift+Enter = linjeskift)
   document.getElementById('prompt').addEventListener('keydown', function(event) {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
       sendMessage();
     }
+  });
+
+  // Tryk Control for at toggle mikrofon
+  document.addEventListener('keydown', function(event) {
+    if (event.code === 'ControlLeft' || event.code === 'ControlRight') {
+      event.preventDefault();
+      if (isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    }
+  });
+
+  // Auto-resize textarea ved manuel input + stop optagelse ved manuel redigering
+  document.getElementById('prompt').addEventListener('input', function() {
+    autoResizePrompt();
+    if (isRecording) stopRecording();
+  });
+
+  document.getElementById('prompt').addEventListener('click', function() {
+    if (isRecording) stopRecording();
+  });
+
+  // Vis/skjul slet-knap afhængigt af om der er tekst i feltet
+  const clearBtn = document.getElementById('clearPromptBtn');
+  document.getElementById('prompt').addEventListener('input', function() {
+    clearBtn.style.display = this.value ? 'block' : 'none';
+  });
+
+  clearBtn.addEventListener('click', function() {
+    const promptInput = document.getElementById('prompt');
+    promptInput.value = '';
+    autoResizePrompt();
+    clearBtn.style.display = 'none';
+    promptInput.focus();
   });
 
   // Lyt efter klik på mikrofon-knappen
