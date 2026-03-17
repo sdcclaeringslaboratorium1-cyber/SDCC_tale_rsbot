@@ -14,14 +14,20 @@ let config = null;
 // Funktion til at hente konfiguration fra GitHub
 async function loadConfig(character = 'mogens') {
   // Bestem config fil baseret på karakter
-  const configFileName = character === 'mogens' ? 'config.json' : `config_${character}.json`;
+  const configFileName = character === 'mogens' ? 'config.json' : `config_${character}.js`;
   
   // Tjek om vi skal bruge lokal config til test
   if (process.env.USE_LOCAL_CONFIG === 'true') {
     console.log(`🧪 Test mode: Bruger lokal ${configFileName}`);
     try {
       const configPath = path.join(__dirname, configFileName);
-      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      const raw = fs.readFileSync(configPath, 'utf8');
+      if (raw.trim().startsWith('window.')) {
+        const match = raw.match(/window\.\w+\((\{[\s\S]*\})\s*\)\s*;?\s*$/);
+        config = match ? JSON.parse(match[1]) : (() => { throw new Error('Ugyldig JSONP'); })();
+      } else {
+        config = JSON.parse(raw);
+      }
       console.log(`✅ Lokal ${configFileName} indlæst for test`);
       return;
     } catch (error) {
@@ -34,8 +40,19 @@ async function loadConfig(character = 'mogens') {
     // Hent konfiguration fra offentlig GitHub RAW URL (main)
     const githubUrl = `https://raw.githubusercontent.com/sdcclaeringslaboratorium1-cyber/SDCC_tale_rsbot/main/${configFileName}`;
     console.log(`🌐 Henter config fra: ${githubUrl}`);
-    const response = await axios.get(githubUrl);
-    config = response.data;
+    const response = await axios.get(githubUrl, { responseType: 'text' });
+    const raw = response.data;
+    // Håndter JSONP-format (fx window.configBodilDataCallback({...}))
+    if (typeof raw === 'string' && raw.trim().startsWith('window.')) {
+      const match = raw.match(/window\.\w+\((\{[\s\S]*\})\s*\)\s*;?\s*$/);
+      if (match) {
+        config = JSON.parse(match[1]);
+      } else {
+        throw new Error('Kunne ikke parse JSONP-format fra ' + configFileName);
+      }
+    } else {
+      config = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    }
     console.log(`✅ Konfiguration indlæst fra GitHub RAW: ${configFileName}`);
     console.log('📋 Tilgængelige karakterer:', config.characters ? Object.keys(config.characters) : 'Ingen');
   } catch (error) {
