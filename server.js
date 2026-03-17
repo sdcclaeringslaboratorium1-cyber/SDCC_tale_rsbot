@@ -23,9 +23,9 @@ async function loadConfig(character = 'mogens') {
     try {
       const configPath = path.join(__dirname, localFileName);
       const raw = fs.readFileSync(configPath, 'utf8');
-      if (raw.trim().startsWith('window.')) {
-        const match = raw.match(/window\.\w+\((\{[\s\S]*\})\s*\)\s*;?\s*$/);
-        config = match ? JSON.parse(match[1]) : (() => { throw new Error('Ugyldig JSONP'); })();
+      const match = raw.match(/window\.\w+\((\{[\s\S]*\})\s*\)\s*;?\s*$/);
+      if (match) {
+        config = JSON.parse(match[1]);
       } else {
         config = JSON.parse(raw);
       }
@@ -44,13 +44,9 @@ async function loadConfig(character = 'mogens') {
     const response = await axios.get(githubUrl, { responseType: 'text' });
     const raw = response.data;
     // Håndter JSONP-format (fx window.configBodilDataCallback({...}))
-    if (typeof raw === 'string' && raw.trim().startsWith('window.')) {
-      const match = raw.match(/window\.\w+\((\{[\s\S]*\})\s*\)\s*;?\s*$/);
-      if (match) {
-        config = JSON.parse(match[1]);
-      } else {
-        throw new Error('Kunne ikke parse JSONP-format fra ' + githubFileName);
-      }
+    const match = typeof raw === 'string' ? raw.match(/window\.\w+\((\{[\s\S]*\})\s*\)\s*;?\s*$/) : null;
+    if (match) {
+      config = JSON.parse(match[1]);
     } else {
       config = typeof raw === 'string' ? JSON.parse(raw) : raw;
     }
