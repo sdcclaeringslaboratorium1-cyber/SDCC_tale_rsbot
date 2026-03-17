@@ -14,13 +14,14 @@ let config = null;
 // Funktion til at hente konfiguration fra GitHub
 async function loadConfig(character = 'mogens') {
   // Bestem config fil baseret på karakter
-  const configFileName = character === 'mogens' ? 'config.json' : `config_${character}.js`;
+  const githubFileName = character === 'mogens' ? 'config.json' : `config_${character}.js`;
+  const localFileName = `config_${character}.js`;
   
   // Tjek om vi skal bruge lokal config til test
   if (process.env.USE_LOCAL_CONFIG === 'true') {
-    console.log(`🧪 Test mode: Bruger lokal ${configFileName}`);
+    console.log(`🧪 Test mode: Bruger lokal ${localFileName}`);
     try {
-      const configPath = path.join(__dirname, configFileName);
+      const configPath = path.join(__dirname, localFileName);
       const raw = fs.readFileSync(configPath, 'utf8');
       if (raw.trim().startsWith('window.')) {
         const match = raw.match(/window\.\w+\((\{[\s\S]*\})\s*\)\s*;?\s*$/);
@@ -28,17 +29,17 @@ async function loadConfig(character = 'mogens') {
       } else {
         config = JSON.parse(raw);
       }
-      console.log(`✅ Lokal ${configFileName} indlæst for test`);
+      console.log(`✅ Lokal ${localFileName} indlæst for test`);
       return;
     } catch (error) {
-      console.error(`❌ Kunne ikke indlæse lokal ${configFileName}:`, error);
+      console.error(`❌ Kunne ikke indlæse lokal ${localFileName}:`, error);
       process.exit(1);
     }
   }
   
   try {
     // Hent konfiguration fra offentlig GitHub RAW URL (main)
-    const githubUrl = `https://raw.githubusercontent.com/sdcclaeringslaboratorium1-cyber/SDCC_tale_rsbot/main/${configFileName}`;
+    const githubUrl = `https://raw.githubusercontent.com/sdcclaeringslaboratorium1-cyber/SDCC_tale_rsbot/main/${githubFileName}`;
     console.log(`🌐 Henter config fra: ${githubUrl}`);
     const response = await axios.get(githubUrl, { responseType: 'text' });
     const raw = response.data;
@@ -48,12 +49,12 @@ async function loadConfig(character = 'mogens') {
       if (match) {
         config = JSON.parse(match[1]);
       } else {
-        throw new Error('Kunne ikke parse JSONP-format fra ' + configFileName);
+        throw new Error('Kunne ikke parse JSONP-format fra ' + githubFileName);
       }
     } else {
       config = typeof raw === 'string' ? JSON.parse(raw) : raw;
     }
-    console.log(`✅ Konfiguration indlæst fra GitHub RAW: ${configFileName}`);
+    console.log(`✅ Konfiguration indlæst fra GitHub RAW: ${githubFileName}`);
     console.log('📋 Tilgængelige karakterer:', config.characters ? Object.keys(config.characters) : 'Ingen');
   } catch (error) {
     console.error('❌ Fejl ved indlæsning af konfiguration fra GitHub:', error);
