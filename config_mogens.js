@@ -166,7 +166,7 @@ window.configMogensDataCallback({
     },
     "page": {
       "title": "Interaktiv patientsamtale-træning",
-      "task_description": "<b>Din opgave:</b> Motivér Mogens til at starte insulinbehandling med daglige fastende blodsukkermålinger og insulinpen.<br><br><b>Mogens er kritisk overfor opstart af insulinbehandling</b> og frustreret over sundhedsvæsenet - men lytter til god argumentation."
+      "task_description": "<b>Din opgave:</b> <br/>Motivér Mogens til at starte insulinbehandling med daglige fastende blodsukkermålinger og insulinpen.<br><br><b>Mogens er kritisk overfor opstart af insulinbehandling</b> og frustreret over sundhedsvæsenet - men lytter til god argumentation."
     },
     "advice": {
       "title": "5 råd til en god patientsamtale",
