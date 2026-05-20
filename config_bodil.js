@@ -15,13 +15,13 @@ window.configBodilDataCallback({
         "complications": [],
         "BMI": null
       },
-      "image": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl1.png",
+      "image": "https://kompetenceudvikling.videncenterfordiabetes.dk/digitale_objekter/SDCC_tale_rsbot/images/streg_bodil_1.png",
       "status_images": {
-        "1": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl1.png",
-        "2": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl2.png",
-        "3": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl3.png",
-        "4": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl4.png",
-        "5": "https://kompetenceudvikling.videncenterfordiabetes.dk/chatbotDDM13/images/bodil_lvl5.png"
+        "1": "https://kompetenceudvikling.videncenterfordiabetes.dk/digitale_objekter/SDCC_tale_rsbot/images/streg_bodil_1.png",
+        "2": "https://kompetenceudvikling.videncenterfordiabetes.dk/digitale_objekter/SDCC_tale_rsbot/images/streg_bodil_2.png",
+        "3": "https://kompetenceudvikling.videncenterfordiabetes.dk/digitale_objekter/SDCC_tale_rsbot/images/streg_bodil_3.png",
+        "4": "https://kompetenceudvikling.videncenterfordiabetes.dk/digitale_objekter/SDCC_tale_rsbot/images/streg_bodil_4.png",
+        "5": "https://kompetenceudvikling.videncenterfordiabetes.dk/digitale_objekter/SDCC_tale_rsbot/images/streg_bodil_5.png"
       },
       "voice_id": "HMOrS97Ihy0YL2fjbno4",
       "voice_name": "Bodil 61 (dansk)",
@@ -152,7 +152,9 @@ window.configBodilDataCallback({
     },
     "page": {
       "title": "Træn en samtale med en pårørende",
-      "subtitle": "Pårørende er Bodil er datter til Birthe på 92. Birthe bor på plejehjem og har diabetes.",
+      "subtitle": "Bodil er datter til Birthe på 92. Birthe bor på plejehjem og har diabetes.",
+      "intro_title": "Bodil konfronterer dig med manglende pleje af hendes mor",
+      "intro_description": "<p> Birthe er 86 år og har haft type 2-diabetes i 23 år samt en apopleksi med venstresidig lammelse. Hun er afhængig af hjælp til alle dagligdags aktiviteter.</p><p>Bodil besøger dagligt sin mor og er meget involveret i plejen. I dag er hun vred og konfronterende – hun har opdaget, at morens morgenmad er urørt, og at blodsukkeret er højt.</p><p>Din opgave er ikke bare at forklare situationen – men at anerkende Bodils bekymringer, skabe kontakt og berolige konflikten.</p><p>Målet er at hjælpe Bodil til at gå fra vrede og frustration til en konstruktiv dialog, hvor hun:</p><ul><li>føler sig set og hørt</li><li>er villig til at samarbejde om en løsning for morens pleje</li></ul><p>Vær opmærksom på:</p><ul><li>hvordan du anerkender følelserne før du forklarer</li><li>hvordan du lytter aktivt og stiller åbne spørgsmål</li><li>hvordan du nedtrapper konflikten og skaber tryghed</li></ul><p>Samtalen udvikler sig ud fra det, du siger og gør.</p>",
       "task_description": "Du kan skrive eller tale med Bodil. Husk at skrue op for lyden."
     },
     "advice": {

@@ -166,7 +166,9 @@ window.configMogensDataCallback({
     },
     "page": {
       "title": "Interaktiv patientsamtale-træning",
-      "task_description": "<b>Din opgave:</b> Motivér Mogens til at starte insulinbehandling med daglige fastende blodsukkermålinger og insulinpen.<br><br><b>Mogens er kritisk overfor opstart af insulinbehandling</b> og frustreret over sundhedsvæsenet - men lytter til god argumentation."
+      "intro_title": "Mogens kommer til konsultation",
+      "intro_description": "<h4>Du møder Mogens i en konsultation om mulig opstart af insulinbehandling</h4><p> Han har haft type 2-diabetes i mange år, er frustreret over sit sygdomsforløb og skeptisk over for endnu et behandlingstiltag.</p><p>Din opgave er ikke bare at informere om insulin – men at undersøge Mogens' bekymringer, skabe en tryg samtale og hjælpe ham med at forstå, hvorfor insulin kan være relevant i netop hans situation.</p><p>Målet er at skabe en samtale, hvor Mogens føler sig lyttet til og gradvist bliver mere åben for:</p><ul><li>daglige fastende blodsukkermålinger</li><li>opstart af basal insulin med insulinpen</li></ul><p>Vær opmærksom på:</p><ul><li>hvordan du rammesætter samtalen</li><li>hvordan du håndterer modstand og bekymringer</li><li>hvordan du balancerer det faglige og det relationelle</li></ul><p>Samtalen udvikler sig ud fra det, du siger og gør.</p>",
+      "task_description": "<b>Din opgave:</b> Motivér Mogens til at starte insulinbehandling med daglige fastende blodsukkermålinger og insulinpen.<br><br><b>Mogens er kritisk over for opstart af insulinbehandling</b> og frustreret over sundhedsvæsenet – men kan lytte til rolig, konkret og velbegrundet argumentation, der tager udgangspunkt i hans situation."
     },
     "advice": {
       "title": "5 råd til en god patientsamtale",

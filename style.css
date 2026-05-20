@@ -22,7 +22,7 @@ body {
 
 /* Global paragraph size */
 p {
-  font-size: 12px;
+ 
 }
 
 .container_bot {
@@ -756,13 +756,14 @@ p {
   width: 100%;
   height: 100%;
   min-height: 400px;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(2px);
   border-radius: 3px;
+  overflow-y: auto;
 }
 
 /* Skjul overlayet permanent når det er blevet brugt */
@@ -771,25 +772,41 @@ p {
 }
 
 .audio-overlay-content {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 3rem;
-  border-radius: 3px;
-  text-align: center;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  max-width: 400px;
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.97);
+  padding: 2.5rem 3rem;
+  border-radius: 6px;
+  text-align: left;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  max-width: 680px;
+  width: 92%;
+  margin: 1.5rem auto;
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .audio-overlay-content h3 {
   color: #1e3a8a;
-  font-size: 1.8rem;
-  margin-bottom: 2rem;
-  font-weight: 600;
+  font-size: 1.4rem;
+  margin-bottom: 1.2rem;
+  font-weight: 700;
 }
 
 .intro-instruction {
-  font-size: 16px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #1f2937;
+}
+
+.intro-instruction p {
+  margin: 0 0 0.8rem 0;
+}
+
+.intro-instruction ul {
+  margin: 0.2rem 0 0.9rem 1.4rem;
+  padding: 0;
+}
+
+.intro-instruction li {
+  margin-bottom: 0.3rem;
 }
 
 .start-audio-btn {

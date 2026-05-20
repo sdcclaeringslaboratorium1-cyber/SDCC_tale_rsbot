@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-label="Sara status 4">
+  <rect width="640" height="640" fill="#f5f3eb"/>
+  <circle cx="320" cy="272" r="148" fill="#f1c7ad"/>
+  <path d="M178 281c-8-86 38-169 137-178 103-9 157 71 150 177-24-62-78-94-147-94-68 0-118 34-140 95z" fill="#3b2b26"/>
+  <path d="M164 540c19-91 75-146 156-146s137 55 156 146" fill="#4f8a83"/>
+  <path d="M246 285c25-5 50-5 74 0M344 285c25-5 50-5 73 0" fill="none" stroke="#3b2b26" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="264" cy="319" r="10" fill="#2f2522"/>
+  <circle cx="376" cy="319" r="10" fill="#2f2522"/>
+  <path d="M274 354c31 28 63 28 94 0" fill="none" stroke="#7f4d42" stroke-width="9" stroke-linecap="round"/>
+  <path d="M473 190c28 67 16 132-29 195" fill="none" stroke="#3b2b26" stroke-width="35" stroke-linecap="round"/>
+</svg>

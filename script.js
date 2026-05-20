@@ -39,17 +39,31 @@ let patientConfig = null; // Reference til aktiv patient fra config
 let completionShown = false; // Popup vises kun én gang ved 5/5
 let initialLoaderInterval = null; // Interval til loader-tekst
 
-// Backend base URL. Tom streng = samme origin. Sættes automatisk til Render ved fallback
-let API_BASE = '';
+// Backend base URL
+let API_BASE = 'https://kompetenceudvikling.videncenterfordiabetes.dk/digitale_objekter/SDCC_tale_rsbot';
 
-// Hvis vi er på localhost men ikke på port 3000, brug eksplicit localhost:3000
-if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && 
+// Lokalt udviklingsmiljø: brug Node.js server på port 3000
+if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
     window.location.port !== '3000') {
   API_BASE = 'http://localhost:3000';
 }
 
+// Mapping fra Node.js-ruter til PHP-filer (bruges på IIS-serveren)
+const PHP_API_MAP = {
+  '/api/config':   '/talebot-config.php',
+  '/api/chat':     '/talebot-chat.php',
+  '/api/evaluate': '/talebot-evaluate.php',
+  '/api/speak':    '/talebot-speak.php',
+};
+
 function apiUrl(path) {
-  return (API_BASE ? API_BASE : '') + path;
+  const base = API_BASE || '';
+  // På localhost:3000 bruges Node.js direkte – ingen mapping
+  if (base.includes('localhost:3000')) return base + path;
+  const pathOnly = path.split('?')[0];
+  const mapped = PHP_API_MAP[pathOnly] || path;
+  const query = path.includes('?') ? path.slice(path.indexOf('?')) : '';
+  return base + mapped + query;
 }
 
 // Hjælper: Ensartet timeout-håndtering (fallback hvis AbortSignal.timeout ikke findes)
@@ -74,9 +88,9 @@ function isLocalHostEnv() {
 
 // Funktion: Hent aktiv karakter fra URL parameter eller forced valg
 function getActiveCharacter() {
+  const validCharacters = ['mogens', 'bodil', 'sara'];
   // FØRST: Tjek om karakter er tvunget via window.FORCE_CHARACTER (Umbraco mode)
   if (window.FORCE_CHARACTER) {
-    const validCharacters = ['mogens', 'bodil'];
     if (validCharacters.includes(window.FORCE_CHARACTER.toLowerCase())) {
       console.log(`🎯 Bruger forced karakter: ${window.FORCE_CHARACTER}`);
       return window.FORCE_CHARACTER.toLowerCase();
@@ -88,7 +102,6 @@ function getActiveCharacter() {
   const character = urlParams.get('character');
   
   // Validér at karakteren findes
-  const validCharacters = ['mogens', 'bodil'];
   if (character && validCharacters.includes(character.toLowerCase())) {
     return character.toLowerCase();
   }
@@ -359,7 +372,7 @@ async function generateIntroAudioBlob(text, requestId) {
       } catch (fetchErr) {
         console.log(`[${requestId}] ⚠️ Lokal server ikke tilgængelig, prøver Render...`);
         if (!API_BASE) {
-          API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+          API_BASE = 'https://kompetenceudvikling.videncenterfordiabetes.dk/digitale_objekter/SDCC_tale_rsbot';
         }
         res = await fetch(apiUrl('/api/speak'), {
           method: 'POST',
@@ -638,7 +651,8 @@ async function sendMessage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            message: userMessage, 
+            message: userMessage,
+            character: activeCharacter,
             dialog
           }),
           signal: AbortSignal.timeout(10000) // 10 sek timeout
@@ -646,7 +660,7 @@ async function sendMessage() {
       } catch (fetchErr) {
         console.log(`[${requestId}] ⚠️ Lokal server ikke tilgængelig, prøver Render...`);
         if (!API_BASE) {
-          API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+          API_BASE = 'https://kompetenceudvikling.videncenterfordiabetes.dk/digitale_objekter/SDCC_tale_rsbot';
           try {
             res = await fetch(apiUrl('/api/chat'), {
               method: 'POST',
@@ -675,7 +689,8 @@ async function sendMessage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          message: userMessage, 
+          message: userMessage,
+          character: activeCharacter,
           dialog
         })
       }, 45000); // Længere timeout på FTP pga. koldstart
@@ -804,7 +819,7 @@ async function speakWithElevenLabsOnPlay(text, requestId) {
       } catch (fetchErr) {
         console.log(`[${requestId}] ⚠️ Lokal server ikke tilgængelig til lyd, prøver Render...`);
         if (!API_BASE) {
-          API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+          API_BASE = 'https://kompetenceudvikling.videncenterfordiabetes.dk/digitale_objekter/SDCC_tale_rsbot';
           try {
             res = await fetch(apiUrl('/api/speak'), {
               method: 'POST',
@@ -1438,10 +1453,11 @@ async function evaluateUserMessageInContext(userMessage, mogensReply, conversati
   try {
     console.log(`[${requestId}] 🔍 Starter evaluering...`);
     
-    const requestBody = { 
+    const requestBody = {
       userMessage: userMessage,
       mogensReply: mogensReply,
-      conversationContext: conversationContext.slice(-5) // Sidste 5 beskeder som kontekst
+      character: activeCharacter,
+      conversationContext: conversationContext.slice(-5)
     };
     
     console.log(`[${requestId}] 🔍 Sender til evaluation API:`, requestBody);
@@ -1464,7 +1480,7 @@ async function evaluateUserMessageInContext(userMessage, mogensReply, conversati
       } catch (fetchErr) {
         console.log(`[${requestId}] ⚠️ Lokal server ikke tilgængelig til evaluering, prøver Render...`);
         if (!API_BASE) {
-          API_BASE = 'https://sdcc-tale-rsbot.onrender.com';
+          API_BASE = 'https://kompetenceudvikling.videncenterfordiabetes.dk/digitale_objekter/SDCC_tale_rsbot';
           try {
             res = await fetch(apiUrl('/api/evaluate'), {
               method: 'POST',
@@ -1748,6 +1764,9 @@ async function loadConfig() {
     } else if (activeCharacter === 'bodil' && window.configBodilData) {
       console.log('✅ Bruger JSONP config for Bodil (embedded mode)');
       config = window.configBodilData;
+    } else if (activeCharacter === 'sara' && window.configSaraData) {
+      console.log('✅ Bruger JSONP config for Sara (embedded mode)');
+      config = window.configSaraData;
     } else {
       // Lokal server API (lokal development)
       console.log('💡 JSONP data ikke fundet, henter fra lokal server API...');
@@ -1928,14 +1947,14 @@ async function updateUIWithConfig() {
     const introTitle = document.querySelector('.intro-title');
     const introSubtitle = document.querySelector('.intro-subtitle');
     const introInstruction = document.querySelector('.intro-instruction');
-    if (introTitle && uiConfig.page?.title) {
-      introTitle.textContent = uiConfig.page.title;
+    if (introTitle) {
+      introTitle.textContent = uiConfig.page?.intro_title || uiConfig.page?.title || '';
     }
     if (introSubtitle && uiConfig.page?.subtitle) {
       introSubtitle.textContent = uiConfig.page.subtitle;
     }
-    if (introInstruction && uiConfig.page?.task_description) {
-      introInstruction.textContent = uiConfig.page.task_description.replace(/<[^>]*>/g, '');
+    if (introInstruction && uiConfig.page?.intro_description) {
+      introInstruction.innerHTML = uiConfig.page.intro_description;
     }
   }
 }
@@ -2151,7 +2170,12 @@ function showPatientInfo() {
       </div>
     `;
   } else {
-    // Mogens specifik information
+    // Generisk patientinformation
+    const healthProfile = patientConfig.health_profile || {};
+    const currentTreatment = Array.isArray(healthProfile.current_treatment) ? healthProfile.current_treatment : [];
+    const previousTreatment = Array.isArray(healthProfile.previous_treatment) ? healthProfile.previous_treatment : [];
+    const symptoms = Array.isArray(healthProfile.symptoms) ? healthProfile.symptoms : [];
+    const complications = Array.isArray(healthProfile.complications) ? healthProfile.complications : [];
     html = `
       <div class="info-section">
         <h4>Grundlæggende Information</h4>
@@ -2159,31 +2183,31 @@ function showPatientInfo() {
           <li><strong>Navn:</strong> ${patientConfig.name}</li>
           <li><strong>Alder:</strong> ${patientConfig.age} år</li>
           <li><strong>Sygdom:</strong> ${patientConfig.condition}</li>
-          <li><strong>BMI:</strong> ${patientConfig.health_profile.BMI}</li>
+          ${healthProfile.BMI ? `<li><strong>BMI:</strong> ${healthProfile.BMI}</li>` : ''}
         </ul>
       </div>
       
       <div class="info-section">
         <h4>Sundhedsprofil</h4>
         <ul class="info-list">
-          <li><strong>Diagnose:</strong> ${patientConfig.health_profile.diagnosis_years} år</li>
-          <li><strong>HbA1c:</strong> ${patientConfig.health_profile.HbA1c}</li>
-          <li><strong>Nuværende behandling:</strong> ${patientConfig.health_profile.current_treatment.join(', ')}</li>
-          <li><strong>Tidligere behandling:</strong> ${patientConfig.health_profile.previous_treatment.join(', ')}</li>
+          ${healthProfile.diagnosis_years ? `<li><strong>Diagnose:</strong> ${healthProfile.diagnosis_years} år</li>` : ''}
+          ${healthProfile.HbA1c ? `<li><strong>HbA1c:</strong> ${healthProfile.HbA1c}</li>` : ''}
+          ${currentTreatment.length ? `<li><strong>Nuværende behandling:</strong> ${currentTreatment.join(', ')}</li>` : ''}
+          ${previousTreatment.length ? `<li><strong>Tidligere behandling:</strong> ${previousTreatment.join(', ')}</li>` : ''}
         </ul>
       </div>
       
       <div class="info-section">
         <h4>Symptomer</h4>
         <ul class="info-list">
-          ${patientConfig.health_profile.symptoms.map(symptom => `<li>${symptom}</li>`).join('')}
+          ${symptoms.map(symptom => `<li>${symptom}</li>`).join('')}
         </ul>
       </div>
       
       <div class="info-section">
         <h4>Komplikationer</h4>
         <ul class="info-list">
-          ${patientConfig.health_profile.complications.map(complication => `<li>${complication}</li>`).join('')}
+          ${complications.map(complication => `<li>${complication}</li>`).join('')}
         </ul>
       </div>
       
